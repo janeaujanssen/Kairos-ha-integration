@@ -22,7 +22,6 @@ from .const import (
     CONF_REQUEST_TIMEOUT,
     CONF_TIME_STEP_MINUTES,
     CONF_UPDATE_INTERVAL,
-    DEFAULT_API_URL,
     DEFAULT_FAILURE_THRESHOLD,
     DEFAULT_HORIZON_HOURS,
     DEFAULT_REQUEST_TIMEOUT,
@@ -184,15 +183,33 @@ def _asset_schema(
         )
         fields[entity_key] = _entity_selector()
     for key in _ASSET_STATIC_FIELDS[asset_type]:
-        fields[vol.Required(key, default=defaults.get(key, _STATIC_FIELDS[key]))] = (
-            selector.NumberSelector(
+        bounds = _BOUNDED_FIELDS.get(key)
+        minimum = (
+            bounds[0]
+            if bounds
+            else -50
+            if key in _TEMPERATURE_FIELDS
+            else 0
+        )
+        if bounds:
+            number_selector = selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=_BOUNDED_FIELDS.get(key, (-50 if key in _TEMPERATURE_FIELDS else 0, None))[0],
-                    max=_BOUNDED_FIELDS.get(key, (None, None))[1],
+                    min=minimum,
+                    max=bounds[1],
                     step=0.01,
                     mode=selector.NumberSelectorMode.BOX,
                 )
             )
+        else:
+            number_selector = selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=minimum,
+                    step=0.01,
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            )
+        fields[vol.Required(key, default=defaults.get(key, _STATIC_FIELDS[key]))] = (
+            number_selector
         )
 
     if asset_type == "grid":
@@ -259,19 +276,14 @@ async def _check_api(hass: HomeAssistant, api_url: str, timeout: int) -> None:
 
 
 class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Set up the App connection and its energy assets."""
+    """Set up the Kairos API connection and optimization settings."""
 
     VERSION = 1
-
-    def __init__(self) -> None:
-        self._settings: dict[str, Any] = {}
-        self._assets: list[dict[str, Any]] = []
-        self._asset_type: str | None = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
-        """Configure the API and optimization interval."""
+        """Configure the API and global optimization settings."""
         errors: dict[str, str] = {}
         if user_input is not None:
             api_url = user_input[CONF_API_URL].rstrip("/")
@@ -294,7 +306,7 @@ class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     await self.async_set_unique_id(api_url.casefold())
                     self._abort_if_unique_id_configured()
-                    self._settings = {
+                    settings = {
                         **user_input,
                         CONF_API_URL: api_url,
                         CONF_UPDATE_INTERVAL: int(user_input[CONF_UPDATE_INTERVAL]),
@@ -303,11 +315,14 @@ class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_REQUEST_TIMEOUT: int(user_input[CONF_REQUEST_TIMEOUT]),
                         CONF_FAILURE_THRESHOLD: int(user_input[CONF_FAILURE_THRESHOLD]),
                     }
-                    return await self.async_step_add_asset()
+                    return self.async_create_entry(
+                        title="Kairos",
+                        data={**settings, CONF_ASSETS: []},
+                    )
 
         schema = vol.Schema(
             {
-                vol.Required(CONF_API_URL, default=DEFAULT_API_URL): selector.TextSelector(),
+                vol.Required(CONF_API_URL): selector.TextSelector(),
                 vol.Required(
                     CONF_UPDATE_INTERVAL, default=DEFAULT_UPDATE_INTERVAL
                 ): selector.NumberSelector(
@@ -346,71 +361,6 @@ class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         )
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
-
-    async def async_step_add_asset(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
-        """Choose an asset to configure or finish setup."""
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            selected = user_input["asset_type"]
-            if selected == "done":
-                configured = {asset["asset_type"] for asset in self._assets}
-                if "grid" not in configured or "base_load" not in configured:
-                    errors["base"] = "grid_and_base_load_required"
-                else:
-                    return self.async_create_entry(
-                        title="Kairos", data={**self._settings, CONF_ASSETS: self._assets}
-                    )
-            else:
-                self._asset_type = selected
-                return await self.async_step_asset()
-
-        choices: dict[str, str] = {
-            asset_type: _ASSET_LABELS[asset_type] for asset_type in ASSET_TYPES
-        }
-        choices["done"] = "Finish setup"
-        return self.async_show_form(
-            step_id="add_asset",
-            data_schema=vol.Schema(
-                {vol.Required("asset_type"): vol.In(choices)}
-            ),
-            errors=errors,
-        )
-
-    async def async_step_asset(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
-        """Configure a single asset."""
-        assert self._asset_type is not None
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            asset = {**user_input, "asset_type": self._asset_type}
-            asset["id"] = _slugify(asset["name"])
-            existing_ids = {item["id"] for item in self._assets}
-            if asset["id"] in existing_ids:
-                errors["base"] = "duplicate_asset_name"
-            elif (
-                self._asset_type in ("grid", "base_load")
-                and any(item["asset_type"] == self._asset_type for item in self._assets)
-            ):
-                errors["base"] = "duplicate_required_asset"
-            else:
-                if self._asset_type == "grid":
-                    asset["positive_means_import"] = user_input.get(
-                        "positive_means_import", True
-                    )
-                self._assets.append(asset)
-                self._asset_type = None
-                return await self.async_step_add_asset()
-
-        asset_type = self._asset_type
-        return self.async_show_form(
-            step_id="asset",
-            data_schema=_asset_schema(asset_type),
-            errors=errors,
-            description_placeholders={"asset_type": _ASSET_LABELS[asset_type]},
-        )
 
     @staticmethod
     @callback

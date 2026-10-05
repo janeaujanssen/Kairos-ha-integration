@@ -20,11 +20,16 @@ Kairos connects Home Assistant to the [Kairos energy optimization API](https://g
 
 ## Setup
 
-The default API URL is `http://kairos:8000`, suitable for the Kairos add-on. For a standalone container, enter its reachable URL, for example `http://192.168.1.20:8000`. The setup flow verifies the URL before proceeding.
+Setup is split into two stages:
+
+1. Add **Kairos Energy Optimization** and enter the API URL and global settings. The URL must be reachable from Home Assistant and respond to `GET /health`. The integration does not assume that `http://kairos:8000` resolves. For an add-on or standalone container exposing port `8000`, try `http://<Home Assistant host IP>:8000` or the add-on's actual network hostname.
+2. Open **Settings > Devices & services > Kairos Energy Optimization > Configure**. Choose **Add an asset**, select its type, and fill in its entity selectors and parameters. Add one grid connection and one household base load before optimizing; other assets are optional. Assets can be added, edited, and removed later from the same Configure menu.
+
+The integration entry can be created before any devices are configured. Its status remains `not_configured` until both required assets have been added; it will not send incomplete requests to the API.
 
 Set the update interval and time step in minutes, the planning horizon in hours, and the request timeout. The timeout must be shorter than the update interval, and the update interval must be a multiple of the time step.
 
-Add one grid connection and one household base load, then add any optional assets. For each asset select the relevant state entities and enter its physical limits and parameters. Forecast attributes are read from the selected entity; forecast values are normalized to one numeric value per time step. A missing base-load forecast is held at its current value. PV and grid price forecasts must be present.
+For each asset, select the relevant state entities and enter physical limits and parameters. Forecast attributes are read from the selected entity; forecast values are normalized to one numeric value per time step. A missing base-load forecast is held at its current value. PV and grid price forecasts must be present.
 
 The selected grid power entity is normalized to the API convention: positive means import and negative means export. Select whether the source entity itself reports positive import or positive export. Power entities must use W, kW, or MW; price forecast entities need a price-per-energy unit such as EUR/kWh; SoC may be a fraction or percent; temperatures may be °C or °F.
 
@@ -32,7 +37,7 @@ The selected grid power entity is normalized to the API convention: positive mea
 
 For each scheduled grid, controllable load, or storage asset, Kairos creates a setpoint sensor with a `schedule` attribute containing timestamped `{time, value}` points. The sensor state advances through the schedule and becomes unavailable when its schedule expires. Building thermal mass also has a mode sensor (`charge`, `neutral`, or `discharge`). System diagnostics include:
 
-- `sensor.kairos_status` — `optimal`, `feasible`, `infeasible`, or `error`, with failure count and timing attributes.
+- `sensor.kairos_status` — `not_configured`, `optimal`, `feasible`, `infeasible`, or `error`, with failure count and timing attributes.
 - `sensor.kairos_objective_cost` — objective value of the latest valid optimization.
 
 Use a Home Assistant automation to translate each setpoint to device-specific services. For example, a positive battery setpoint can select charge mode and set charge power; a negative value can select discharge mode and use its absolute value. Treat unavailable states as a signal not to issue a new command.

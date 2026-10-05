@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect to Kairos",
-        "description": "Enter the Kairos API URL and optimization timing.",
+        "description": "Enter the API URL reachable from Home Assistant and optimization timing. Configure devices later from the integration's Configure menu.",
         "data": {
           "api_url": "Kairos API URL",
           "update_interval": "Optimization interval (minutes)",
@@ -12,78 +12,13 @@
           "request_timeout": "Request timeout (seconds)",
           "failure_threshold": "Failures before creating a repair issue"
         }
-      },
-      "add_asset": {
-        "title": "Configure energy assets",
-        "description": "Add one grid and one household base load. Other assets are optional.",
-        "data": {
-          "asset_type": "Asset"
-        }
-      },
-      "asset": {
-        "title": "Configure {asset_type}",
-        "description": "Choose Home Assistant entities and enter physical parameters.",
-        "data": {
-          "name": "Asset name",
-          "power_entity": "Current power entity",
-          "soc_entity": "State-of-charge entity",
-          "water_temperature_entity": "Water temperature entity",
-          "indoor_temperature_entity": "Indoor temperature entity",
-          "power_forecast_entity": "Power forecast entity",
-          "power_forecast_attribute": "Power forecast attribute",
-          "import_price_entity": "Import price entity",
-          "export_price_entity": "Export price entity",
-          "import_price_forecast_attribute": "Import price forecast attribute",
-          "export_price_forecast_attribute": "Export price forecast attribute",
-          "positive_means_import": "Positive grid power means import",
-          "earliest_start_time": "Earliest start time (HH:MM or ISO date-time)",
-          "latest_finish_time": "Latest finish time (HH:MM or ISO date-time)",
-          "expected_departure_time": "Expected EV departure time (HH:MM)",
-          "expected_arrival_time": "Expected EV arrival time (HH:MM)",
-          "morning_peak_time": "Morning demand peak time (HH:MM)",
-          "evening_peak_time": "Evening demand peak time (HH:MM)",
-          "max_import_power": "Maximum import power (W)",
-          "max_export_power": "Maximum export power (W)",
-          "energy_capacity": "Energy capacity (Wh)",
-          "min_soc": "Minimum state of charge (0-1)",
-          "max_soc": "Maximum state of charge (0-1)",
-          "max_charge_power": "Maximum charge power (W)",
-          "max_discharge_power": "Maximum discharge power (W)",
-          "charge_efficiency": "Charge efficiency (0-1)",
-          "discharge_efficiency": "Discharge efficiency (0-1)",
-          "passive_discharge_power": "Passive discharge power (W)",
-          "average_power": "Average power (W)",
-          "energy_demand": "Energy demand (Wh)",
-          "tank_volume": "Tank volume (L)",
-          "min_water_temperature": "Minimum water temperature (°C)",
-          "max_water_temperature": "Maximum water temperature (°C)",
-          "min_comfort_temperature": "Minimum comfort temperature (°C)",
-          "heat_loss_coefficient": "Heat loss coefficient (W/°C)",
-          "heat_pump_electric_power": "Heat pump electric power (W)",
-          "heat_pump_cop": "Heat pump COP",
-          "morning_peak_energy_demand": "Morning peak demand (Wh)",
-          "evening_peak_energy_demand": "Evening peak demand (Wh)",
-          "floor_area": "Floor area (m²)",
-          "thermal_mass_coefficient": "Thermal mass coefficient (Wh/m²/°C)",
-          "default_weather_compensation_temperature": "Default weather compensation temperature (°C)",
-          "max_comfort_temperature": "Maximum comfort temperature (°C)",
-          "heating_rate": "Heating rate (°C/hour)",
-          "cooldown_rate": "Cooldown rate (°C/hour)",
-          "heat_pump_cop_charge": "Heat pump COP when charging",
-          "heat_pump_cop_default": "Heat pump COP in default mode",
-          "vehicle_efficiency": "Vehicle efficiency (km/Wh)",
-          "round_trip_distance": "Round-trip distance (km)"
-        }
       }
     },
     "error": {
       "invalid_url": "Enter a valid HTTP or HTTPS URL.",
       "cannot_connect": "Could not reach a healthy Kairos API at this URL.",
       "timeout_too_long": "The request timeout must be shorter than the optimization interval.",
-      "interval_not_multiple": "The optimization interval must be a multiple of the time step.",
-      "grid_and_base_load_required": "A grid connection and base load are required.",
-      "duplicate_asset_name": "Asset names must be unique.",
-      "duplicate_required_asset": "Only one grid and one base load can be configured."
+      "interval_not_multiple": "The optimization interval must be a multiple of the time step."
     },
     "abort": {
       "already_configured": "This Kairos API URL is already configured."

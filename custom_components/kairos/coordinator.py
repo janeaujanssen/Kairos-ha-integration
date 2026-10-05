@@ -82,6 +82,10 @@ class KairosCoordinator:
             self._objective_cost = saved.get("objective_cost")
             self._status = saved.get("status", "error")
         self.coordinator.data = self._sensor_data()
+        if not self._configuration_ready():
+            self._status = "not_configured"
+            self.coordinator.data = self._sensor_data()
+            return
         await self.coordinator.async_refresh()
         self._schedule_next_tick()
 
@@ -94,11 +98,20 @@ class KairosCoordinator:
 
     async def async_run_optimization(self) -> None:
         """Force the coordinator to run an optimization immediately."""
+        if not self._configuration_ready():
+            self._status = "not_configured"
+            self.coordinator.async_set_updated_data(self._sensor_data())
+            return
         self._force_update = True
         try:
             await self.coordinator.async_refresh()
         finally:
             self._force_update = False
+
+    def _configuration_ready(self) -> bool:
+        """Return whether required inputs are configured."""
+        kinds = {asset["asset_type"] for asset in self.assets}
+        return {"grid", "base_load"}.issubset(kinds)
 
     def _schedule_next_tick(self) -> None:
         """Schedule the next refresh just after an aligned optimization boundary."""
