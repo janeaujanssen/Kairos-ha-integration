@@ -1,0 +1,194 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Kairos",
+        "description": "Enter the API URL reachable from Home Assistant and optimization timing. Configure devices later from the integration's Configure menu.",
+        "data": {
+          "api_url": "Kairos API URL",
+          "update_interval": "Optimization interval (minutes)",
+          "time_step_minutes": "Schedule time step (minutes)",
+          "horizon_hours": "Optimization horizon (hours)",
+          "request_timeout": "Request timeout (seconds)",
+          "failure_threshold": "Failures before creating a repair issue"
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Enter a valid HTTP or HTTPS URL.",
+      "cannot_connect": "Could not reach a healthy Kairos API at this URL.",
+      "timeout_too_long": "The request timeout must be shorter than the optimization interval.",
+      "interval_not_multiple": "The optimization interval must be a multiple of the time step."
+    },
+    "abort": {
+      "already_configured": "This Kairos API URL is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Kairos",
+        "menu_options": {
+          "settings": "Optimization settings",
+          "add_asset": "Add an asset",
+          "edit_asset": "Edit an asset",
+          "remove_asset": "Remove an optional asset"
+        }
+      },
+      "settings": {
+        "title": "Kairos settings",
+        "description": "Update global optimization timing.",
+        "data": {
+          "update_interval": "Optimization interval (minutes)",
+          "time_step_minutes": "Schedule time step (minutes)",
+          "horizon_hours": "Optimization horizon (hours)",
+          "request_timeout": "Request timeout (seconds)",
+          "failure_threshold": "Failures before creating a repair issue"
+        }
+      },
+      "add_asset": {
+        "title": "Add an asset",
+        "data": {
+          "asset_type": "Asset"
+        }
+      },
+      "add_asset_config": {
+        "title": "Configure {asset_type}",
+        "description": "Choose Home Assistant entities and enter physical parameters.",
+        "data": {
+          "name": "Asset name",
+          "power_entity": "Current power entity",
+          "soc_entity": "State-of-charge entity",
+          "water_temperature_entity": "Water temperature entity",
+          "indoor_temperature_entity": "Indoor temperature entity",
+          "power_forecast_entity": "Power forecast entity",
+          "power_forecast_attribute": "Power forecast attribute",
+          "import_price_entity": "Import price entity",
+          "export_price_entity": "Export price entity",
+          "import_price_forecast_attribute": "Import price forecast attribute",
+          "export_price_forecast_attribute": "Export price forecast attribute",
+          "positive_means_import": "Positive grid power means import",
+          "earliest_start_time": "Earliest start time (HH:MM or ISO date-time)",
+          "latest_finish_time": "Latest finish time (HH:MM or ISO date-time)",
+          "expected_departure_time": "Expected EV departure time (HH:MM)",
+          "expected_arrival_time": "Expected EV arrival time (HH:MM)",
+          "morning_peak_time": "Morning demand peak time (HH:MM)",
+          "evening_peak_time": "Evening demand peak time (HH:MM)",
+          "max_import_power": "Maximum import power (W)",
+          "max_export_power": "Maximum export power (W)",
+          "energy_capacity": "Energy capacity (Wh)",
+          "min_soc": "Minimum state of charge (0-1)",
+          "max_soc": "Maximum state of charge (0-1)",
+          "max_charge_power": "Maximum charge power (W)",
+          "max_discharge_power": "Maximum discharge power (W)",
+          "charge_efficiency": "Charge efficiency (0-1)",
+          "discharge_efficiency": "Discharge efficiency (0-1)",
+          "passive_discharge_power": "Passive discharge power (W)",
+          "average_power": "Average power (W)",
+          "energy_demand": "Energy demand (Wh)",
+          "tank_volume": "Tank volume (L)",
+          "min_water_temperature": "Minimum water temperature (°C)",
+          "max_water_temperature": "Maximum water temperature (°C)",
+          "min_comfort_temperature": "Minimum comfort temperature (°C)",
+          "heat_loss_coefficient": "Heat loss coefficient (W/°C)",
+          "heat_pump_electric_power": "Heat pump electric power (W)",
+          "heat_pump_cop": "Heat pump COP",
+          "morning_peak_energy_demand": "Morning peak demand (Wh)",
+          "evening_peak_energy_demand": "Evening peak demand (Wh)",
+          "floor_area": "Floor area (m²)",
+          "thermal_mass_coefficient": "Thermal mass coefficient (Wh/m²/°C)",
+          "default_weather_compensation_temperature": "Default weather compensation temperature (°C)",
+          "max_comfort_temperature": "Maximum comfort temperature (°C)",
+          "heating_rate": "Heating rate (°C/hour)",
+          "cooldown_rate": "Cooldown rate (°C/hour)",
+          "heat_pump_cop_charge": "Heat pump COP when charging",
+          "heat_pump_cop_default": "Heat pump COP in default mode",
+          "vehicle_efficiency": "Vehicle efficiency (km/Wh)",
+          "round_trip_distance": "Round-trip distance (km)"
+        }
+      },
+      "edit_asset": {
+        "title": "Select an asset to edit",
+        "data": {
+          "asset_id": "Asset"
+        }
+      },
+      "edit_asset_config": {
+        "title": "Edit {asset_type}",
+        "description": "The asset identifier is kept stable so existing entities and history remain linked.",
+        "data": {
+          "name": "Asset name",
+          "power_entity": "Current power entity",
+          "soc_entity": "State-of-charge entity",
+          "water_temperature_entity": "Water temperature entity",
+          "indoor_temperature_entity": "Indoor temperature entity",
+          "power_forecast_entity": "Power forecast entity",
+          "power_forecast_attribute": "Power forecast attribute",
+          "import_price_entity": "Import price entity",
+          "export_price_entity": "Export price entity",
+          "import_price_forecast_attribute": "Import price forecast attribute",
+          "export_price_forecast_attribute": "Export price forecast attribute",
+          "positive_means_import": "Positive grid power means import",
+          "earliest_start_time": "Earliest start time (HH:MM or ISO date-time)",
+          "latest_finish_time": "Latest finish time (HH:MM or ISO date-time)",
+          "expected_departure_time": "Expected EV departure time (HH:MM)",
+          "expected_arrival_time": "Expected EV arrival time (HH:MM)",
+          "morning_peak_time": "Morning demand peak time (HH:MM)",
+          "evening_peak_time": "Evening demand peak time (HH:MM)",
+          "max_import_power": "Maximum import power (W)",
+          "max_export_power": "Maximum export power (W)",
+          "energy_capacity": "Energy capacity (Wh)",
+          "min_soc": "Minimum state of charge (0-1)",
+          "max_soc": "Maximum state of charge (0-1)",
+          "max_charge_power": "Maximum charge power (W)",
+          "max_discharge_power": "Maximum discharge power (W)",
+          "charge_efficiency": "Charge efficiency (0-1)",
+          "discharge_efficiency": "Discharge efficiency (0-1)",
+          "passive_discharge_power": "Passive discharge power (W)",
+          "average_power": "Average power (W)",
+          "energy_demand": "Energy demand (Wh)",
+          "tank_volume": "Tank volume (L)",
+          "min_water_temperature": "Minimum water temperature (°C)",
+          "max_water_temperature": "Maximum water temperature (°C)",
+          "min_comfort_temperature": "Minimum comfort temperature (°C)",
+          "heat_loss_coefficient": "Heat loss coefficient (W/°C)",
+          "heat_pump_electric_power": "Heat pump electric power (W)",
+          "heat_pump_cop": "Heat pump COP",
+          "morning_peak_energy_demand": "Morning peak demand (Wh)",
+          "evening_peak_energy_demand": "Evening peak demand (Wh)",
+          "floor_area": "Floor area (m²)",
+          "thermal_mass_coefficient": "Thermal mass coefficient (Wh/m²/°C)",
+          "default_weather_compensation_temperature": "Default weather compensation temperature (°C)",
+          "max_comfort_temperature": "Maximum comfort temperature (°C)",
+          "heating_rate": "Heating rate (°C/hour)",
+          "cooldown_rate": "Cooldown rate (°C/hour)",
+          "heat_pump_cop_charge": "Heat pump COP when charging",
+          "heat_pump_cop_default": "Heat pump COP in default mode",
+          "vehicle_efficiency": "Vehicle efficiency (km/Wh)",
+          "round_trip_distance": "Round-trip distance (km)"
+        }
+      },
+      "remove_asset": {
+        "title": "Select an optional asset to remove",
+        "data": {
+          "asset_id": "Asset"
+        }
+      }
+    },
+    "error": {
+      "timeout_too_long": "The request timeout must be shorter than the optimization interval.",
+      "interval_not_multiple": "The optimization interval must be a multiple of the time step.",
+      "duplicate_asset_name": "Asset names must be unique.",
+      "duplicate_required_asset": "Only one grid and one base load can be configured."
+    },
+    "abort": {
+      "no_optional_assets": "There are no optional assets to remove."
+    }
+  },
+  "issues": {
+    "optimization_failed": {
+      "title": "Kairos optimization is failing",
+      "description": "Kairos has failed to produce a usable schedule for multiple cycles. Last error: {detail}"
+    }
+  }
+}
