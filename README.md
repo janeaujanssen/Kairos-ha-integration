@@ -23,9 +23,9 @@ Kairos connects Home Assistant to the [Kairos energy optimization API](https://g
 Setup is split into two stages:
 
 1. Add **Kairos Energy Optimization** and enter the API URL and global settings. The default is `http://192.168.50.11:8000`; change it if the Kairos API is hosted elsewhere. The URL must be reachable from Home Assistant and respond to `GET /health`. The integration does not assume that `http://kairos:8000` resolves. For an add-on or standalone container exposing port `8000`, use the host IP and port or the add-on's actual network hostname.
-2. Open **Settings > Devices & services > Kairos Energy Optimization > Configure**. Choose **Add an asset**, select its type, and fill in its entity selectors and parameters. Add one grid connection and one household base load before optimizing; other assets are optional. Assets can be added, edited, and removed later from the same Configure menu.
+2. Open **Settings > Devices & services > Kairos Energy Optimization > Configure**. Choose **Add an asset**, select its type, and fill in its entity selectors and parameters. Add one grid connection and one household base load for normal automatic optimization; other assets are optional. Assets can be added, edited, and removed later from the same Configure menu.
 
-The integration entry can be created before any devices are configured. Its status remains `not_configured` until both required assets have been added; it will not send incomplete requests to the API.
+The integration entry can be created before any devices are configured. Automatic optimization remains paused until both required assets (grid and base load) have been added. You can still call `kairos.run_optimization` manually to send the currently configured assets to the API and see its validation response. The latest API response, or a local request-building error, is exposed by the diagnostic entity `sensor.kairos_last_api_response`.
 
 Set the update interval and time step in minutes, the planning horizon in hours, and the request timeout. The timeout must be shorter than the update interval, and the update interval must be a multiple of the time step.
 

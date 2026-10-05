@@ -56,6 +56,9 @@ class KairosCoordinator:
         self._duration: float | None = None
         self._status = "error"
         self._objective_cost: float | None = None
+        self._last_api_response: Any = None
+        self._last_api_status: int | None = None
+        self._last_error: str | None = None
         self._schedules: dict[str, Any] = {}
         self._last_optimization_monotonic: float | None = None
         self._rejected_payload_fingerprint: str | None = None
@@ -98,10 +101,6 @@ class KairosCoordinator:
 
     async def async_run_optimization(self) -> None:
         """Force the coordinator to run an optimization immediately."""
-        if not self._configuration_ready():
-            self._status = "not_configured"
-            self.coordinator.async_set_updated_data(self._sensor_data())
-            return
         self._force_update = True
         try:
             await self.coordinator.async_refresh()
@@ -144,10 +143,13 @@ class KairosCoordinator:
             "last_run": self._last_run,
             "duration": self._duration,
             "consecutive_failures": self._failures,
+            "last_api_response": self._last_api_response,
+            "last_api_status": self._last_api_status,
+            "last_error": self._last_error,
         }
 
     async def _async_update_data(self) -> dict[str, Any]:
-        """Build and submit one complete snapshot, retaining schedules on failure."""
+        """Build and submit one snapshot, retaining schedules on failure."""
         started = monotonic()
         interval_seconds = (
             self.config.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL) * 60
@@ -161,6 +163,9 @@ class KairosCoordinator:
 
         self._last_optimization_monotonic = started
         self._last_run = dt_util.now().isoformat()
+        self._last_api_response = None
+        self._last_api_status = None
+        self._last_error = None
         payload: dict[str, Any] | None = None
         try:
             settings = {
@@ -173,9 +178,13 @@ class KairosCoordinator:
             }
             payload = build_request(self.hass, settings, self.assets)
             fingerprint = _payload_fingerprint(payload)
-            if fingerprint == self._rejected_payload_fingerprint:
+            if (
+                fingerprint == self._rejected_payload_fingerprint
+                and not self._force_update
+            ):
                 return self._sensor_data()
             result = await self.api.async_optimize(payload)
+            self._last_api_response = result
             self._last_optimization_monotonic = monotonic()
             self._duration = monotonic() - started
             self._last_run = payload["timestamp"]
@@ -196,11 +205,18 @@ class KairosCoordinator:
                 self._report_failure("Optimizer returned an infeasible schedule.")
                 await self._persist()
             else:
-                raise KairosApiError(f"Kairos returned unsupported status {status!r}.")
+                raise KairosApiError(
+                    f"Kairos returned unsupported status {status!r}.",
+                    response=result,
+                )
         except (EntityDataError, KairosApiError) as err:
             self._duration = monotonic() - started
             self._status = "error"
             self._failures += 1
+            self._last_error = str(err)
+            if isinstance(err, KairosApiError):
+                self._last_api_status = err.status_code
+                self._last_api_response = err.response
             if (
                 isinstance(err, KairosApiError)
                 and err.status_code == 400

@@ -407,6 +407,4 @@ def build_request(
                     "heat_pump_cop_default": asset["heat_pump_cop_default"],
                 }
             )
-    if not result["grid"] or not result["base_load"]:
-        raise EntityDataError("Configure exactly one grid and one base load before optimizing.")
     return result

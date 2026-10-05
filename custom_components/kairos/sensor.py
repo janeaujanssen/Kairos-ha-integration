@@ -27,6 +27,7 @@ async def async_setup_entry(
     entities: list[SensorEntity] = [
         KairosStatusSensor(runtime, entry),
         KairosObjectiveSensor(runtime, entry),
+        KairosApiResponseSensor(runtime, entry),
     ]
     for asset in runtime.assets:
         if asset["asset_type"] in (
@@ -201,6 +202,42 @@ class KairosObjectiveSensor(KairosSensor):
     def extra_state_attributes(self) -> dict[str, Any]:
         return {
             "optimization_id": self.runtime.coordinator.data.get("last_run")
+        }
+
+
+class KairosApiResponseSensor(KairosSensor):
+    """Expose the latest Kairos API response or request error."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, runtime: KairosCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(runtime, entry)
+        self._attr_unique_id = f"{entry.entry_id}_last_api_response"
+        self._attr_name = "Last API response"
+        self._attr_device_info = self._device_info()
+
+    @property
+    def native_value(self) -> str:
+        data = self.runtime.coordinator.data
+        if data.get("last_api_status") is not None:
+            return f"HTTP {data['last_api_status']}"
+        response = data.get("last_api_response")
+        if isinstance(response, dict):
+            status = response.get("status")
+            if isinstance(status, str):
+                return status
+            return "Response received"
+        if data.get("last_error"):
+            return "Error"
+        return "No response"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        data = self.runtime.coordinator.data
+        return {
+            "http_status": data.get("last_api_status"),
+            "response": data.get("last_api_response"),
+            "error": data.get("last_error"),
         }
 
 
