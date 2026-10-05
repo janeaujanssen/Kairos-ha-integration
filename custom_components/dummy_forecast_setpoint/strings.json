@@ -1,0 +1,16 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Dummy Forecast Setpoint",
+        "description": "Select an entity whose forecast attribute contains forecast points.",
+        "data": {
+          "entity_id": "Forecast source entity"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This source entity is already configured."
+    }
+  }
+}
