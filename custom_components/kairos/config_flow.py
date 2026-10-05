@@ -22,6 +22,7 @@ from .const import (
     CONF_REQUEST_TIMEOUT,
     CONF_TIME_STEP_MINUTES,
     CONF_UPDATE_INTERVAL,
+    DEFAULT_API_URL,
     DEFAULT_FAILURE_THRESHOLD,
     DEFAULT_HORIZON_HOURS,
     DEFAULT_REQUEST_TIMEOUT,
@@ -322,7 +323,9 @@ class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         schema = vol.Schema(
             {
-                vol.Required(CONF_API_URL): selector.TextSelector(),
+                vol.Required(
+                    CONF_API_URL, default=DEFAULT_API_URL
+                ): selector.TextSelector(),
                 vol.Required(
                     CONF_UPDATE_INTERVAL, default=DEFAULT_UPDATE_INTERVAL
                 ): selector.NumberSelector(
@@ -365,17 +368,17 @@ class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(
-        config_entry: config_entries.ConfigEntry,
+        _config_entry: config_entries.ConfigEntry,
     ) -> config_entries.OptionsFlow:
         """Expose global timing settings as entry options."""
-        return KairosOptionsFlow(config_entry)
+        return KairosOptionsFlow()
 
 
 class KairosOptionsFlow(config_entries.OptionsFlow):
     """Manage global settings and energy assets after setup."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
+    def __init__(self) -> None:
+        super().__init__()
         self._asset_type: str | None = None
         self._editing_id: str | None = None
 
