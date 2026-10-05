@@ -206,14 +206,14 @@ class KairosObjectiveSensor(KairosSensor):
 
 
 class KairosApiResponseSensor(KairosSensor):
-    """Expose the latest Kairos API response or request error."""
+    """Expose the latest optimization attempt and any API response."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, runtime: KairosCoordinator, entry: ConfigEntry) -> None:
         super().__init__(runtime, entry)
         self._attr_unique_id = f"{entry.entry_id}_last_api_response"
-        self._attr_name = "Last API response"
+        self._attr_name = "Last optimization attempt"
         self._attr_device_info = self._device_info()
 
     @property
@@ -225,10 +225,10 @@ class KairosApiResponseSensor(KairosSensor):
         if isinstance(response, dict):
             status = response.get("status")
             if isinstance(status, str):
-                return status
+                return f"API {status}" if status.casefold() == "error" else status
             return "Response received"
         if data.get("last_error"):
-            return "Error"
+            return "Request error"
         return "No response"
 
     @property
@@ -236,7 +236,7 @@ class KairosApiResponseSensor(KairosSensor):
         data = self.runtime.coordinator.data
         return {
             "http_status": data.get("last_api_status"),
-            "response": data.get("last_api_response"),
+            "api_response": data.get("last_api_response"),
             "error": data.get("last_error"),
         }
 
