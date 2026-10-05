@@ -1,0 +1,3 @@
+run_optimization:
+  name: Run optimization
+  description: Run an immediate Kairos optimization for all configured entries.

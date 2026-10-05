@@ -1,76 +1,50 @@
-# Dummy Forecast Setpoint
+# Kairos Home Assistant Integration
 
-A Home Assistant custom integration that creates a sensor named **Dummy Setpoint** with fixed demo data.
+Kairos connects Home Assistant to the [Kairos energy optimization API](https://github.com/janeaujanssen/Kairos). It sends a snapshot of configured energy assets to `POST /optimize` and exposes the returned schedules as Home Assistant sensors. The integration never controls physical devices; use your own automations to apply setpoints.
 
-The sensor's state is always `20.0`. Its `forecast` attribute contains three dummy points with `time` and `forecast_value` keys. The selected entity in the setup form is only used to identify the config entry; the sensor does not read it or change when it changes.
+## Features
 
-Example sensor attributes:
-
-```yaml
-forecast:
-  - time: "<setup time plus 1 hour>"
-    forecast_value: 18.5
-  - time: "<setup time plus 2 hours>"
-    forecast_value: 19.0
-  - time: "<setup time plus 3 hours>"
-    forecast_value: 19.4
-```
-
-## Plot the forecast
-
-Install the [Plotly Graph Card](https://github.com/dbuezas/lovelace-plotly-graph-card) in Home Assistant, then add this card to a dashboard using the raw Lovelace editor:
-
-```yaml
-type: custom:plotly-graph
-hours_to_show: 24
-time_offset: $ex (new Date().setHours(23,59,59,999) - Date.now()) + 'ms'
-refresh_interval: 60
-entities:
-  - entity: sensor.dummy_setpoint
-    name: Setpoint
-    filters:
-      - fn: |-
-          ({ meta }) => ({
-            xs: meta.forecast.map(({ time }) => new Date(time)),
-            ys: meta.forecast.map(({ value }) => value)
-          })
-layout:
-  margin:
-    t: 30
-  shapes:
-    - type: line
-      x0: $ex new Date()
-      x1: $ex new Date()
-      yref: paper
-      y0: 0
-      y1: 1
-      line:
-        width: 1
-        dash: dot
-```
-
-If Home Assistant assigned the sensor a different entity ID, replace `sensor.dummy_setpoint` in the card configuration.
-
-## Files
-
-- `hacs.json`: Names the repository for HACS.
-- `custom_components/dummy_forecast_setpoint/__init__.py`: Forwards integration setup and unload operations to the sensor platform.
-- `custom_components/dummy_forecast_setpoint/config_flow.py`: Displays the setup form and lets the user select an entity for the config entry.
-- `custom_components/dummy_forecast_setpoint/const.py`: Defines the integration domain, configuration key, and supported platform.
-- `custom_components/dummy_forecast_setpoint/manifest.json`: Declares Home Assistant integration metadata, version, and dependencies.
-- `custom_components/dummy_forecast_setpoint/sensor.py`: Creates the Dummy Setpoint sensor and its fixed sample forecast data.
-- `custom_components/dummy_forecast_setpoint/strings.json`: Supplies the setup form's user-facing labels and messages.
-- `README.md`: Describes the integration and explains HACS and manual installation.
+- Configures the Kairos API URL and verifies it through `GET /health`.
+- Collects grid, PV, base-load, controllable-load, battery, DHW tank, and building thermal-mass inputs from Home Assistant.
+- Converts common HA units to the physical units required by the API (W, price/Wh, fractional SoC, and °C).
+- Periodically optimizes with configurable time step, horizon, timeout, and failure threshold. Forecast points with timestamps are aligned to the configured grid; untimestamped numeric arrays are treated as already step-aligned and held at their last value if shorter than the horizon.
+- Exposes schedule sensors, a thermal-mass mode sensor, optimization status, and objective cost.
+- Keeps following the last valid schedule when an optimization fails and persists schedules across Home Assistant restarts.
+- Provides the `kairos.run_optimization` action for an immediate run.
 
 ## Install through HACS
 
 1. Open HACS > Integrations > the three-dot menu > **Custom repositories**.
-2. Add the public GitHub repository URL (`https://github.com/<OWNER>/<REPOSITORY>`) with category **Integration**.
-3. Find **Dummy Forecast Setpoint** in HACS and download it.
-4. Restart Home Assistant, then add the integration from Settings > Devices & services.
+2. Add `https://github.com/janeaujanssen/Kairos-ha-integration` with category **Integration**.
+3. Download **Kairos Energy Optimization**, restart Home Assistant, then add Kairos from **Settings > Devices & services**.
 
-Replace `<OWNER>/<REPOSITORY>` with the GitHub account and repository name after this project is published. The repository must contain `hacs.json` and the `custom_components/dummy_forecast_setpoint` directory at its root.
+## Setup
+
+The default API URL is `http://kairos:8000`, suitable for the Kairos add-on. For a standalone container, enter its reachable URL, for example `http://192.168.1.20:8000`. The setup flow verifies the URL before proceeding.
+
+Set the update interval and time step in minutes, the planning horizon in hours, and the request timeout. The timeout must be shorter than the update interval, and the update interval must be a multiple of the time step.
+
+Add one grid connection and one household base load, then add any optional assets. For each asset select the relevant state entities and enter its physical limits and parameters. Forecast attributes are read from the selected entity; forecast values are normalized to one numeric value per time step. A missing base-load forecast is held at its current value. PV and grid price forecasts must be present.
+
+The selected grid power entity is normalized to the API convention: positive means import and negative means export. Select whether the source entity itself reports positive import or positive export. Power entities must use W, kW, or MW; price forecast entities need a price-per-energy unit such as EUR/kWh; SoC may be a fraction or percent; temperatures may be °C or °F.
+
+## Entities and automation
+
+For each scheduled grid, controllable load, or storage asset, Kairos creates a setpoint sensor with a `schedule` attribute containing timestamped `{time, value}` points. The sensor state advances through the schedule and becomes unavailable when its schedule expires. Building thermal mass also has a mode sensor (`charge`, `neutral`, or `discharge`). System diagnostics include:
+
+- `sensor.kairos_status` — `optimal`, `feasible`, `infeasible`, or `error`, with failure count and timing attributes.
+- `sensor.kairos_objective_cost` — objective value of the latest valid optimization.
+
+Use a Home Assistant automation to translate each setpoint to device-specific services. For example, a positive battery setpoint can select charge mode and set charge power; a negative value can select discharge mode and use its absolute value. Treat unavailable states as a signal not to issue a new command.
+
+Run an optimization manually from **Developer Tools > Actions** with:
+
+```yaml
+action: kairos.run_optimization
+```
+
+The integration does not ship dashboards or device-control automations. For API behavior and the full architecture, see the [Kairos Home Assistant integration architecture](https://github.com/janeaujanssen/Kairos/blob/main/kairos/architecture/ha_integration_architecture.md).
 
 ## Manual install
 
-Copy `custom_components/dummy_forecast_setpoint` into the `custom_components` directory of your Home Assistant configuration, restart Home Assistant, then add **Dummy Forecast Setpoint** from Settings > Devices & services.
+Copy `custom_components/kairos` into the `custom_components` directory in your Home Assistant configuration, restart Home Assistant, and add **Kairos Energy Optimization** from **Settings > Devices & services**.
