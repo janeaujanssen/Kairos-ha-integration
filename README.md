@@ -16,6 +16,88 @@ forecast:
     forecast_value: 19.4
 ```
 
+## Plot the forecast
+
+Install the [Plotly Graph Card](https://github.com/dbuezas/lovelace-plotly-graph-card) in Home Assistant, then add this card to a dashboard using the raw Lovelace editor:
+
+```yaml
+type: custom:plotly-graph
+raw_plotly_config: true
+entities:
+  - entity: sensor.dummy_setpoint
+    name: Forecast
+    type: scatter
+    mode: lines+markers
+    x: >-
+      $ex hass.states['sensor.dummy_setpoint']?.attributes?.forecast?.map(point => new Date(point.time)) ?? []
+    y: >-
+      $ex hass.states['sensor.dummy_setpoint']?.attributes?.forecast?.map(point => point.forecast_value) ?? []
+layout:
+  title: Dummy Setpoint Forecast
+  xaxis:
+    title: Time
+  yaxis:
+    title: Forecast value
+```
+
+```yaml
+type: custom:plotly-graph
+hours_to_show: 24
+time_offset: $ex (new Date().setHours(23,59,59,999) - Date.now()) + 'ms'
+refresh_interval: 60
+entities:
+  - entity: sensor.electricity_price_total
+    name: Total Price (€/kWh)
+    filters:
+      - fn: |-
+          ({ xs, ys, hass }) => {
+            const entity = hass.states['sensor.electricity_price_total'];
+            const prices = entity?.attributes?.prices ?? [];
+            return {
+              xs: prices.map(d => new Date(d.t)),
+              ys: prices.map(d => d.price)
+            };
+          }
+  - entity: sensor.electricity_price_market
+    name: Market Price (€/kWh)
+    filters:
+      - fn: |-
+          ({ xs, ys, hass }) => {
+            const entity = hass.states['sensor.electricity_price_market'];
+            const prices = entity?.attributes?.prices ?? [];
+            return {
+              xs: prices.map(d => new Date(d.t)),
+              ys: prices.map(d => d.price)
+            };
+          }          
+  - entity: ""
+    name: Now
+    yaxis: y9
+    showlegend: false
+    line:
+      width: 1
+      dash: dot
+      color: deepskyblue
+    x: $ex [Date.now(), Date.now()]
+    "y":
+      - 0
+      - 1
+layout:
+  xaxis:
+    title: Time
+  yaxis:
+    title: €/kWh
+    fixedrange: true
+  yaxis9:
+    visible: false
+    fixedrange: true
+    range:
+      - 0
+      - 1
+```
+
+If Home Assistant assigned the sensor a different entity ID, replace `sensor.dummy_setpoint` in the card configuration.
+
 ## Files
 
 - `hacs.json`: Names the repository for HACS.

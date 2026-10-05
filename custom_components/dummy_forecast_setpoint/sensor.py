@@ -25,7 +25,7 @@ class DummySetpointSensor(SensorEntity):
         self._forecast = [
             {
                 "time": (start_time + timedelta(hours=hours)).isoformat(),
-                "forecast_value": value,
+                "value": value,
             }
             for hours, value in ((1, 18.5), (2, 19.0), (3, 19.4))
         ]
