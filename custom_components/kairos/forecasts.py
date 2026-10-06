@@ -35,8 +35,8 @@ async def async_forecast_base_load(
     start_time: datetime,
     step_minutes: int,
     steps: int,
-    current_power: float,
-) -> list[float]:
+    current_power: float | None,
+) -> list[float | None]:
     """Average matching weekday/time-slot readings from the previous four weeks."""
     now = dt_util.now()
     states_by_entity = await hass.async_add_executor_job(
@@ -66,7 +66,7 @@ async def async_forecast_base_load(
         weekly_slot_averages[(weekday, slot)].append(fmean(values))
 
     start_utc = dt_util.as_utc(start_time)
-    forecast: list[float] = []
+    forecast: list[float | None] = []
     for step in range(steps):
         target = dt_util.as_local(
             start_utc + timedelta(minutes=step * step_minutes)

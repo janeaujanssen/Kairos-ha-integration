@@ -35,7 +35,7 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
 )
-from .request import EntityDataError, build_request
+from .request import build_request
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +56,7 @@ class KairosCoordinator:
         self._duration: float | None = None
         self._status = "error"
         self._objective_cost: float | None = None
+        self._last_api_request: dict[str, Any] | None = None
         self._last_api_response: Any = None
         self._last_api_status: int | None = None
         self._last_error: str | None = None
@@ -143,6 +144,7 @@ class KairosCoordinator:
             "last_run": self._last_run,
             "duration": self._duration,
             "consecutive_failures": self._failures,
+            "last_api_request": self._last_api_request,
             "last_api_response": self._last_api_response,
             "last_api_status": self._last_api_status,
             "last_error": self._last_error,
@@ -163,6 +165,7 @@ class KairosCoordinator:
 
         self._last_optimization_monotonic = started
         self._last_run = dt_util.now().isoformat()
+        self._last_api_request = None
         self._last_api_response = None
         self._last_api_status = None
         self._last_error = None
@@ -183,6 +186,7 @@ class KairosCoordinator:
                 and not self._force_update
             ):
                 return self._sensor_data()
+            self._last_api_request = payload
             result = await self.api.async_optimize(payload)
             self._last_api_response = result
             self._last_optimization_monotonic = monotonic()
@@ -209,7 +213,7 @@ class KairosCoordinator:
                     f"Kairos returned unsupported status {status!r}.",
                     response=result,
                 )
-        except (EntityDataError, KairosApiError) as err:
+        except KairosApiError as err:
             self._duration = monotonic() - started
             self._status = "error"
             self._failures += 1
