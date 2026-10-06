@@ -55,12 +55,10 @@ class KairosSensor(CoordinatorEntity, SensorEntity):
         self.runtime = runtime
         self.entry = entry
 
-    def _device_info(self, asset: dict[str, Any] | None = None) -> DeviceInfo:
-        identifier = asset["id"] if asset else "system"
-        name = asset["name"] if asset else "Kairos"
+    def _device_info(self) -> DeviceInfo:
         return DeviceInfo(
-            identifiers={(DOMAIN, f"{self.entry.entry_id}_{identifier}")},
-            name=name,
+            identifiers={(DOMAIN, f"{self.entry.entry_id}_system")},
+            name="Kairos",
             manufacturer="Kairos",
             configuration_url=self.runtime.config["api_url"],
         )
@@ -78,7 +76,7 @@ class KairosSetpointSensor(KairosSensor):
         self.asset = asset
         self._attr_unique_id = f"{entry.entry_id}_{asset['id']}_setpoint"
         self._attr_name = f"{asset['name']} setpoint"
-        self._attr_device_info = self._device_info(asset)
+        self._attr_device_info = self._device_info()
 
     @property
     def native_value(self) -> float | None:
@@ -128,7 +126,7 @@ class KairosModeSensor(KairosSensor):
         self.asset = asset
         self._attr_unique_id = f"{entry.entry_id}_{asset['id']}_mode"
         self._attr_name = f"{asset['name']} mode"
-        self._attr_device_info = self._device_info(asset)
+        self._attr_device_info = self._device_info()
 
     @property
     def native_value(self) -> str | None:

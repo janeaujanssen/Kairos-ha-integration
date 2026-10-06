@@ -9,6 +9,7 @@ Kairos connects Home Assistant to the [Kairos energy optimization API](https://g
 - Converts common HA units to the physical units required by the API (W, price/Wh, fractional SoC, and °C).
 - Periodically optimizes with configurable time step, horizon, timeout, and failure threshold. Forecast points with timestamps are aligned to the configured grid; untimestamped numeric arrays are treated as already step-aligned and held at their last value if shorter than the horizon.
 - Exposes schedule sensors, a thermal-mass mode sensor, optimization status, and objective cost.
+- Groups all Kairos output entities under one Kairos device in Home Assistant.
 - Keeps following the last valid schedule when an optimization fails and persists schedules across Home Assistant restarts.
 - Provides the `kairos.run_optimization` action for an immediate run.
 
@@ -54,3 +55,35 @@ The integration does not ship dashboards or device-control automations. For API 
 ## Manual install
 
 Copy `custom_components/kairos` into the `custom_components` directory in your Home Assistant configuration, restart Home Assistant, and add **Kairos Energy Optimization** from **Settings > Devices & services**.
+
+## Example Home Assistant template for solar forecast
+```yaml
+- template:
+  - triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: time_pattern
+        hours: "/1"
+
+    actions:
+      - action: forecast_solar.get_forecast
+        data:
+          config_entry: 01KRR7KQDK8SPG5WZF7SDH2QAS
+          resolution: raw
+        response_variable: solar
+
+    sensor:
+      - name: Solar Forecast
+        unit_of_measurement: W
+        state: "{{ solar.watts.values() | list | first | float(0) }}"
+        attributes:
+          forecast: >
+            {% set ns = namespace(items=[]) %}
+            {% for t, v in solar.watts.items() %}
+              {% set ns.items = ns.items + [{
+                'time': t,
+                'value': v
+              }] %}
+            {% endfor %}
+            {{ ns.items }}
+```
