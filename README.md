@@ -39,6 +39,7 @@ For each scheduled grid, controllable load, or storage asset, Kairos creates a s
 
 - `sensor.kairos_status` — `not_configured`, `optimal`, `feasible`, `infeasible`, or `error`, with failure count and timing attributes.
 - `sensor.kairos_objective_cost` — objective value of the latest valid optimization.
+- `sensor.kairos_household_base_load_forecast` — current forecast value in W, with the full timestamped forecast horizon in its `forecast` attribute.
 
 Use a Home Assistant automation to translate each setpoint to device-specific services. For example, a positive battery setpoint can select charge mode and set charge power; a negative value can select discharge mode and use its absolute value. Treat unavailable states as a signal not to issue a new command.
 

@@ -28,6 +28,7 @@ async def async_setup_entry(
         KairosStatusSensor(runtime, entry),
         KairosObjectiveSensor(runtime, entry),
         KairosApiResponseSensor(runtime, entry),
+        KairosBaseLoadForecastSensor(runtime, entry),
     ]
     for asset in runtime.assets:
         if asset["asset_type"] in (
@@ -205,6 +206,50 @@ class KairosObjectiveSensor(KairosSensor):
         }
 
 
+class KairosBaseLoadForecastSensor(KairosSensor):
+    """Current household base-load forecast with its full horizon."""
+
+    _attr_native_unit_of_measurement = "W"
+
+    def __init__(self, runtime: KairosCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(runtime, entry)
+        self._attr_unique_id = f"{entry.entry_id}_base_load_forecast"
+        self._attr_name = "Household base load forecast"
+        self._attr_device_info = self._device_info()
+
+    @property
+    def native_value(self) -> float | None:
+        point = _active_point(
+            _base_load_forecast_points(self.runtime.coordinator.data),
+            self.runtime.config.get(
+                CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES
+            ),
+        )
+        value = point.get("value") if point else None
+        return value if isinstance(value, (int, float)) else None
+
+    @property
+    def available(self) -> bool:
+        point = _active_point(
+            _base_load_forecast_points(self.runtime.coordinator.data),
+            self.runtime.config.get(
+                CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES
+            ),
+        )
+        return point is not None and isinstance(point.get("value"), (int, float))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        data = self.runtime.coordinator.data
+        return {
+            "forecast": _base_load_forecast_points(data),
+            "time_step_minutes": self.runtime.config.get(
+                CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES
+            ),
+            "optimization_id": data.get("last_run"),
+        }
+
+
 class KairosApiResponseSensor(KairosSensor):
     """Expose the latest optimization attempt and any API response."""
 
@@ -263,3 +308,24 @@ def _active_point(
         else:
             active = point
     return active
+
+
+def _base_load_forecast_points(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Convert the submitted base-load forecast to timestamped sensor points."""
+    request = data.get("last_api_request")
+    if not isinstance(request, dict):
+        return []
+    base_load = request.get("base_load")
+    values = base_load.get("power_forecast") if isinstance(base_load, dict) else None
+    start_time = dt_util.parse_datetime(str(request.get("timestamp", "")))
+    if not isinstance(values, list) or start_time is None:
+        return []
+
+    step_minutes = request.get("time_step_duration_hours", 0) * 60
+    return [
+        {
+            "time": (start_time + timedelta(minutes=index * step_minutes)).isoformat(),
+            "value": value,
+        }
+        for index, value in enumerate(values)
+    ]
