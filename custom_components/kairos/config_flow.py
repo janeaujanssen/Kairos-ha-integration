@@ -228,16 +228,6 @@ def _asset_schema(
         fields[vol.Required("power_forecast_attribute", default=defaults.get("power_forecast_attribute", "forecast"))] = (
             selector.TextSelector()
         )
-    elif asset_type == "base_load":
-        key = (
-            vol.Optional(
-                "power_forecast_attribute",
-                default=defaults["power_forecast_attribute"],
-            )
-            if "power_forecast_attribute" in defaults
-            else vol.Optional("power_forecast_attribute")
-        )
-        fields[key] = selector.TextSelector()
     if asset_type == "ev_battery":
         for key, default in (
             ("expected_departure_time", "09:00"),
@@ -496,6 +486,9 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             updated = {**original, **user_input, "id": self._editing_id}
+            if self._asset_type == "base_load":
+                updated.pop("power_forecast_attribute", None)
+                updated.pop("power_forecast_entity", None)
             if any(
                 item["id"] != self._editing_id
                 and _slugify(item["name"]) == _slugify(updated["name"])

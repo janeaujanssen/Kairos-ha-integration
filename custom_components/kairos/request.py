@@ -9,6 +9,8 @@ from typing import Any
 from homeassistant.core import HomeAssistant, State
 from homeassistant.util import dt as dt_util
 
+from .forecasts import async_forecast_base_load
+
 
 class EntityDataError(ValueError):
     """A required Home Assistant value is unavailable or invalid."""
@@ -230,7 +232,7 @@ def _schedule_datetime(value: str, now: datetime) -> str:
     return _daily_datetime(value, now)
 
 
-def build_request(
+async def build_request(
     hass: HomeAssistant, config: dict[str, Any], assets: list[dict[str, Any]]
 ) -> dict[str, Any]:
     """Create the physical-input request accepted by POST /optimize."""
@@ -294,18 +296,28 @@ def build_request(
             }
         elif kind in ("pv", "base_load"):
             current_power = _power(hass, asset["power_entity"], kind.replace("_", " "))
-            forecast = _forecast(
-                hass,
-                asset.get("power_forecast_entity", asset["power_entity"]),
-                asset.get("power_forecast_attribute"),
-                current_power,
-                steps,
-                f"{kind.replace('_', ' ')} power",
-                "power",
-                required=kind == "pv",
-                start_time=request_start,
-                step_minutes=time_step_minutes,
-            )
+            if kind == "pv":
+                forecast = _forecast(
+                    hass,
+                    asset.get("power_forecast_entity", asset["power_entity"]),
+                    asset.get("power_forecast_attribute"),
+                    current_power,
+                    steps,
+                    "pv power",
+                    "power",
+                    required=True,
+                    start_time=request_start,
+                    step_minutes=time_step_minutes,
+                )
+            else:
+                forecast = await async_forecast_base_load(
+                    hass,
+                    asset["power_entity"],
+                    request_start,
+                    time_step_minutes,
+                    steps,
+                    current_power,
+                )
             model = {**common, "current_power": current_power, "power_forecast": forecast}
             if kind == "pv":
                 result["pv"].append(model)

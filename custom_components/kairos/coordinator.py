@@ -176,7 +176,7 @@ class KairosCoordinator:
                     CONF_HORIZON_HOURS, DEFAULT_HORIZON_HOURS
                 ),
             }
-            payload = build_request(self.hass, settings, self.assets)
+            payload = await build_request(self.hass, settings, self.assets)
             fingerprint = _payload_fingerprint(payload)
             if (
                 fingerprint == self._rejected_payload_fingerprint

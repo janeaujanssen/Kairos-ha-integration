@@ -29,7 +29,7 @@ The integration entry can be created before any devices are configured. Automati
 
 Set the update interval and time step in minutes, the planning horizon in hours, and the request timeout. The timeout must be shorter than the update interval, and the update interval must be a multiple of the time step.
 
-For each asset, select the relevant state entities and enter physical limits and parameters. Forecast attributes are read from the selected entity; forecast values are normalized to one numeric value per time step. A missing base-load forecast is held at its current value. PV and grid price forecasts must be present.
+For each asset, select the relevant state entities and enter physical limits and parameters. Forecast attributes are read from the selected entity; forecast values are normalized to one numeric value per time step. The household base-load forecast is generated automatically by averaging recorded power readings from the same weekday and time slot over the previous four weeks. If no matching history is available for a forecast step, that step uses the current power reading. No forecast entity or attribute is needed for the base load. PV and grid price forecasts must be present.
 
 The selected grid power entity is normalized to the API convention: positive means import and negative means export. Select whether the source entity itself reports positive import or positive export. Power entities must use W, kW, or MW; price forecast entities need a price-per-energy unit such as EUR/kWh; SoC may be a fraction or percent; temperatures may be °C or °F.
 
