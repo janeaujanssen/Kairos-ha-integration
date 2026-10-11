@@ -62,7 +62,7 @@ _STATIC_FIELDS: dict[str, float] = {
     "discharge_efficiency": 0.95,
     "passive_discharge_power": 0,
     "average_power": 1500,
-    "energy_demand": 1800,
+    "runtime_h": 1.2,
     "tank_volume": 300,
     "min_water_temperature": 20,
     "max_water_temperature": 60,
@@ -80,7 +80,7 @@ _STATIC_FIELDS: dict[str, float] = {
     "cooldown_rate": 0.1,
     "heat_pump_cop_charge": 2.5,
     "heat_pump_cop_default": 3,
-    "vehicle_efficiency": 0.005,
+    "vehicle_efficiency": 5.0,
     "round_trip_distance": 100,
 }
 
@@ -113,7 +113,7 @@ _ASSET_STATIC_FIELDS: dict[str, tuple[str, ...]] = {
     "grid": ("max_import_power", "max_export_power"),
     "pv": (),
     "base_load": (),
-    "controllable_load": ("average_power", "energy_demand"),
+    "controllable_load": ("average_power", "runtime_h"),
     "home_battery": (
         "energy_capacity",
         "min_soc",
@@ -277,7 +277,7 @@ async def _check_api(hass: HomeAssistant, api_url: str, timeout: int) -> None:
 class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Set up the Kairos API connection and optimization settings."""
 
-    VERSION = 1
+    VERSION = 2
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

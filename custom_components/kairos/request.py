@@ -337,7 +337,8 @@ async def build_request(
             load = {
                 **common,
                 "average_power": asset.get("average_power"),
-                "energy_demand": asset.get("energy_demand"),
+                "energy_demand": asset.get("average_power", 0)
+                * asset.get("runtime_h", 0),
                 "earliest_start_time": _schedule_datetime(
                     asset.get("earliest_start_time"), now
                 ),
@@ -383,6 +384,7 @@ async def build_request(
                         ),
                     }
                 )
+                model["vehicle_efficiency"] /= 1000
             result["storage"].append(model)
         elif kind == "dhw_tank":
             result["storage"].append(

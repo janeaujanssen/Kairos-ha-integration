@@ -5,8 +5,42 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 
-from .const import DOMAIN, PLATFORMS
+from .const import CONF_ASSETS, DOMAIN, PLATFORMS
 from .coordinator import KairosCoordinator
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate asset inputs to match the Kairos app's names and units."""
+    if entry.version > 1:
+        return False
+
+    data = {**entry.data}
+    options = {**entry.options}
+    for settings in (data, options):
+        assets = settings.get(CONF_ASSETS)
+        if not isinstance(assets, list):
+            continue
+        migrated_assets = []
+        for asset in assets:
+            migrated = {**asset}
+            if migrated.get("asset_type") == "controllable_load":
+                energy_demand = migrated.pop("energy_demand", None)
+                if energy_demand is not None:
+                    average_power = migrated.get("average_power", 0)
+                    migrated["runtime_h"] = (
+                        energy_demand / average_power if average_power else 0
+                    )
+            if migrated.get("asset_type") == "ev_battery":
+                efficiency = migrated.get("vehicle_efficiency")
+                if efficiency is not None:
+                    migrated["vehicle_efficiency"] = efficiency * 1000
+            migrated_assets.append(migrated)
+        settings[CONF_ASSETS] = migrated_assets
+
+    hass.config_entries.async_update_entry(
+        entry, data=data, options=options, version=2
+    )
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
