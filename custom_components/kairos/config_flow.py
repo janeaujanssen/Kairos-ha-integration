@@ -18,15 +18,23 @@ from .const import (
     CONF_API_URL,
     CONF_ASSETS,
     CONF_FAILURE_THRESHOLD,
+    CONF_GRID_PEAK_PENALTY,
     CONF_HORIZON_HOURS,
+    CONF_RELATIVE_MIP_GAP,
     CONF_REQUEST_TIMEOUT,
+    CONF_SWITCHING_PENALTY,
     CONF_TIME_STEP_MINUTES,
+    CONF_TIME_LIMIT_S,
     CONF_UPDATE_INTERVAL,
     DEFAULT_API_URL,
     DEFAULT_FAILURE_THRESHOLD,
+    DEFAULT_GRID_PEAK_PENALTY,
     DEFAULT_HORIZON_HOURS,
+    DEFAULT_RELATIVE_MIP_GAP,
     DEFAULT_REQUEST_TIMEOUT,
+    DEFAULT_SWITCHING_PENALTY,
     DEFAULT_TIME_STEP_MINUTES,
+    DEFAULT_TIME_LIMIT_S,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
 )
@@ -183,6 +191,12 @@ def _asset_schema(
             else vol.Optional("power_entity")
         )
         fields[entity_key] = _entity_selector()
+        run_started_key = (
+            vol.Optional("run_started_at_entity", default=defaults["run_started_at_entity"])
+            if "run_started_at_entity" in defaults
+            else vol.Optional("run_started_at_entity")
+        )
+        fields[run_started_key] = _entity_selector()
     for key in _ASSET_STATIC_FIELDS[asset_type]:
         bounds = _BOUNDED_FIELDS.get(key)
         minimum = (
@@ -283,6 +297,8 @@ class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_url"
             elif user_input[CONF_REQUEST_TIMEOUT] >= user_input[CONF_UPDATE_INTERVAL] * 60:
                 errors["base"] = "timeout_too_long"
+            elif user_input[CONF_REQUEST_TIMEOUT] <= user_input[CONF_TIME_LIMIT_S]:
+                errors["base"] = "request_timeout_too_short"
             elif user_input[CONF_UPDATE_INTERVAL] % user_input[CONF_TIME_STEP_MINUTES]:
                 errors["base"] = "interval_not_multiple"
             else:
@@ -305,6 +321,10 @@ class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_HORIZON_HOURS: int(user_input[CONF_HORIZON_HOURS]),
                         CONF_REQUEST_TIMEOUT: int(user_input[CONF_REQUEST_TIMEOUT]),
                         CONF_FAILURE_THRESHOLD: int(user_input[CONF_FAILURE_THRESHOLD]),
+                        CONF_TIME_LIMIT_S: int(user_input[CONF_TIME_LIMIT_S]),
+                        CONF_RELATIVE_MIP_GAP: float(user_input[CONF_RELATIVE_MIP_GAP]),
+                        CONF_SWITCHING_PENALTY: float(user_input[CONF_SWITCHING_PENALTY]),
+                        CONF_GRID_PEAK_PENALTY: float(user_input[CONF_GRID_PEAK_PENALTY]),
                     }
                     return self.async_create_entry(
                         title="Kairos",
@@ -341,7 +361,7 @@ class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_REQUEST_TIMEOUT, default=DEFAULT_REQUEST_TIMEOUT
                 ): selector.NumberSelector(
                     selector.NumberSelectorConfig(
-                        min=1, max=300, step=1, mode=selector.NumberSelectorMode.BOX
+                        min=1, max=3601, step=1, mode=selector.NumberSelectorMode.BOX
                     )
                 ),
                 vol.Required(
@@ -349,6 +369,34 @@ class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ): selector.NumberSelector(
                     selector.NumberSelectorConfig(
                         min=1, max=20, step=1, mode=selector.NumberSelectorMode.BOX
+                    )
+                ),
+                vol.Required(
+                    CONF_TIME_LIMIT_S, default=DEFAULT_TIME_LIMIT_S
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=1, max=3600, step=1, mode=selector.NumberSelectorMode.BOX
+                    )
+                ),
+                vol.Required(
+                    CONF_RELATIVE_MIP_GAP, default=DEFAULT_RELATIVE_MIP_GAP
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, max=1, step=0.01, mode=selector.NumberSelectorMode.BOX
+                    )
+                ),
+                vol.Required(
+                    CONF_SWITCHING_PENALTY, default=DEFAULT_SWITCHING_PENALTY
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, step=0.01, mode=selector.NumberSelectorMode.BOX
+                    )
+                ),
+                vol.Required(
+                    CONF_GRID_PEAK_PENALTY, default=DEFAULT_GRID_PEAK_PENALTY
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, step=0.01, mode=selector.NumberSelectorMode.BOX
                     )
                 ),
             }
@@ -404,8 +452,22 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
                     data_schema=self._options_schema(),
                     errors={"base": "timeout_too_long"},
                 )
+            if user_input[CONF_REQUEST_TIMEOUT] <= user_input[CONF_TIME_LIMIT_S]:
+                return self.async_show_form(
+                    step_id="settings",
+                    data_schema=self._options_schema(),
+                    errors={"base": "request_timeout_too_short"},
+                )
             return self.async_create_entry(
-                title="", data={**self.config_entry.options, **user_input}
+                title="",
+                data={
+                    **self.config_entry.options,
+                    **user_input,
+                    CONF_TIME_LIMIT_S: int(user_input[CONF_TIME_LIMIT_S]),
+                    CONF_RELATIVE_MIP_GAP: float(user_input[CONF_RELATIVE_MIP_GAP]),
+                    CONF_SWITCHING_PENALTY: float(user_input[CONF_SWITCHING_PENALTY]),
+                    CONF_GRID_PEAK_PENALTY: float(user_input[CONF_GRID_PEAK_PENALTY]),
+                },
             )
 
         return self.async_show_form(
@@ -583,7 +645,7 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
                     default=settings.get(CONF_REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT),
                 ): selector.NumberSelector(
                     selector.NumberSelectorConfig(
-                        min=1, max=300, step=1, mode=selector.NumberSelectorMode.BOX
+                            min=1, max=3601, step=1, mode=selector.NumberSelectorMode.BOX
                     )
                 ),
                 vol.Required(
@@ -592,6 +654,44 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
                 ): selector.NumberSelector(
                     selector.NumberSelectorConfig(
                         min=1, max=20, step=1, mode=selector.NumberSelectorMode.BOX
+                    )
+                ),
+                vol.Required(
+                    CONF_TIME_LIMIT_S,
+                    default=settings.get(CONF_TIME_LIMIT_S, DEFAULT_TIME_LIMIT_S),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=1, max=3600, step=1, mode=selector.NumberSelectorMode.BOX
+                    )
+                ),
+                vol.Required(
+                    CONF_RELATIVE_MIP_GAP,
+                    default=settings.get(
+                        CONF_RELATIVE_MIP_GAP, DEFAULT_RELATIVE_MIP_GAP
+                    ),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, max=1, step=0.01, mode=selector.NumberSelectorMode.BOX
+                    )
+                ),
+                vol.Required(
+                    CONF_SWITCHING_PENALTY,
+                    default=settings.get(
+                        CONF_SWITCHING_PENALTY, DEFAULT_SWITCHING_PENALTY
+                    ),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, step=0.01, mode=selector.NumberSelectorMode.BOX
+                    )
+                ),
+                vol.Required(
+                    CONF_GRID_PEAK_PENALTY,
+                    default=settings.get(
+                        CONF_GRID_PEAK_PENALTY, DEFAULT_GRID_PEAK_PENALTY
+                    ),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, step=0.01, mode=selector.NumberSelectorMode.BOX
                     )
                 ),
             }

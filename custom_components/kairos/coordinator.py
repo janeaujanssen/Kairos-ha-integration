@@ -24,14 +24,22 @@ from .const import (
     CONF_API_URL,
     CONF_ASSETS,
     CONF_FAILURE_THRESHOLD,
+    CONF_GRID_PEAK_PENALTY,
     CONF_HORIZON_HOURS,
+    CONF_RELATIVE_MIP_GAP,
     CONF_REQUEST_TIMEOUT,
+    CONF_SWITCHING_PENALTY,
     CONF_TIME_STEP_MINUTES,
+    CONF_TIME_LIMIT_S,
     CONF_UPDATE_INTERVAL,
     DEFAULT_FAILURE_THRESHOLD,
+    DEFAULT_GRID_PEAK_PENALTY,
     DEFAULT_HORIZON_HOURS,
+    DEFAULT_RELATIVE_MIP_GAP,
     DEFAULT_REQUEST_TIMEOUT,
+    DEFAULT_SWITCHING_PENALTY,
     DEFAULT_TIME_STEP_MINUTES,
+    DEFAULT_TIME_LIMIT_S,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
 )
@@ -177,6 +185,18 @@ class KairosCoordinator:
                 ),
                 "horizon_hours": self.config.get(
                     CONF_HORIZON_HOURS, DEFAULT_HORIZON_HOURS
+                ),
+                CONF_TIME_LIMIT_S: self.config.get(
+                    CONF_TIME_LIMIT_S, DEFAULT_TIME_LIMIT_S
+                ),
+                CONF_RELATIVE_MIP_GAP: self.config.get(
+                    CONF_RELATIVE_MIP_GAP, DEFAULT_RELATIVE_MIP_GAP
+                ),
+                CONF_SWITCHING_PENALTY: self.config.get(
+                    CONF_SWITCHING_PENALTY, DEFAULT_SWITCHING_PENALTY
+                ),
+                CONF_GRID_PEAK_PENALTY: self.config.get(
+                    CONF_GRID_PEAK_PENALTY, DEFAULT_GRID_PEAK_PENALTY
                 ),
             }
             payload = await build_request(self.hass, settings, self.assets)

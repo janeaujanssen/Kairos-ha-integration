@@ -9,6 +9,12 @@ from typing import Any
 from homeassistant.core import HomeAssistant, State
 from homeassistant.util import dt as dt_util
 
+from .const import (
+    DEFAULT_GRID_PEAK_PENALTY,
+    DEFAULT_RELATIVE_MIP_GAP,
+    DEFAULT_SWITCHING_PENALTY,
+    DEFAULT_TIME_LIMIT_S,
+)
 from .forecasts import async_forecast_base_load
 
 
@@ -217,6 +223,24 @@ def _schedule_datetime(value: str | None, now: datetime) -> str | None:
     return _daily_datetime(value, now)
 
 
+def _datetime_entity(
+    hass: HomeAssistant, entity_id: str | None, now: datetime
+) -> str | None:
+    """Read an ISO date-time value from a Home Assistant entity."""
+    state = _state(hass, entity_id)
+    if state is None:
+        return None
+    try:
+        parsed = dt_util.parse_datetime(state.state)
+    except (TypeError, ValueError):
+        return None
+    if parsed is None:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=now.tzinfo)
+    return parsed.isoformat()
+
+
 async def build_request(
     hass: HomeAssistant, config: dict[str, Any], assets: list[dict[str, Any]]
 ) -> dict[str, Any]:
@@ -236,6 +260,16 @@ async def build_request(
         "timestamp": request_start.isoformat(),
         "time_step_duration_hours": time_step_minutes / 60,
         "horizon_hours": config["horizon_hours"],
+        "time_limit_s": config.get("time_limit_s", DEFAULT_TIME_LIMIT_S),
+        "relative_mip_gap": config.get(
+            "relative_mip_gap", DEFAULT_RELATIVE_MIP_GAP
+        ),
+        "switching_penalty": config.get(
+            "switching_penalty", DEFAULT_SWITCHING_PENALTY
+        ),
+        "grid_peak_penalty": config.get(
+            "grid_peak_penalty", DEFAULT_GRID_PEAK_PENALTY
+        ),
         "grid": {},
         "base_load": {},
         "pv": [],
@@ -305,20 +339,24 @@ async def build_request(
                 if asset.get("power_entity")
                 else None
             )
-            result["controllable_loads"].append(
-                {
-                    **common,
-                    "current_power": current_power,
-                    "average_power": asset.get("average_power"),
-                    "energy_demand": asset.get("energy_demand"),
-                    "earliest_start_time": _schedule_datetime(
-                        asset.get("earliest_start_time"), now
-                    ),
-                    "latest_finish_time": _schedule_datetime(
-                        asset.get("latest_finish_time"), now
-                    ),
-                }
+            load = {
+                **common,
+                "current_power": current_power,
+                "average_power": asset.get("average_power"),
+                "energy_demand": asset.get("energy_demand"),
+                "earliest_start_time": _schedule_datetime(
+                    asset.get("earliest_start_time"), now
+                ),
+                "latest_finish_time": _schedule_datetime(
+                    asset.get("latest_finish_time"), now
+                ),
+            }
+            run_started_at = _datetime_entity(
+                hass, asset.get("run_started_at_entity"), now
             )
+            if run_started_at is not None:
+                load["run_started_at"] = run_started_at
+            result["controllable_loads"].append(load)
         elif kind in ("home_battery", "ev_battery"):
             model = {
                 **common,

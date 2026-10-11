@@ -10,7 +10,11 @@
           "time_step_minutes": "Schedule time step (minutes)",
           "horizon_hours": "Optimization horizon (hours)",
           "request_timeout": "Request timeout (seconds)",
-          "failure_threshold": "Failures before creating a repair issue"
+          "failure_threshold": "Failures before creating a repair issue",
+          "time_limit_s": "Solver time limit (seconds)",
+          "relative_mip_gap": "Relative MIP gap (0-1)",
+          "switching_penalty": "Storage switching penalty",
+          "grid_peak_penalty": "Grid peak penalty"
         }
       }
     },
@@ -37,13 +41,17 @@
       },
       "settings": {
         "title": "Kairos settings",
-        "description": "Update global optimization timing.",
+        "description": "Update optimization timing and solver settings.",
         "data": {
           "update_interval": "Optimization interval (minutes)",
           "time_step_minutes": "Schedule time step (minutes)",
           "horizon_hours": "Optimization horizon (hours)",
           "request_timeout": "Request timeout (seconds)",
-          "failure_threshold": "Failures before creating a repair issue"
+          "failure_threshold": "Failures before creating a repair issue",
+          "time_limit_s": "Solver time limit (seconds)",
+          "relative_mip_gap": "Relative MIP gap (0-1)",
+          "switching_penalty": "Storage switching penalty",
+          "grid_peak_penalty": "Grid peak penalty"
         }
       },
       "add_asset": {
@@ -58,6 +66,7 @@
         "data": {
           "name": "Asset name",
           "power_entity": "Current power entity",
+          "run_started_at_entity": "Run started at date-time entity",
           "soc_entity": "State-of-charge entity",
           "water_temperature_entity": "Water temperature entity",
           "indoor_temperature_entity": "Indoor temperature entity",
@@ -119,6 +128,7 @@
         "data": {
           "name": "Asset name",
           "power_entity": "Current power entity",
+          "run_started_at_entity": "Run started at date-time entity",
           "soc_entity": "State-of-charge entity",
           "water_temperature_entity": "Water temperature entity",
           "indoor_temperature_entity": "Indoor temperature entity",
