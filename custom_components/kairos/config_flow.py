@@ -185,12 +185,6 @@ def _asset_schema(
     for key in _ASSET_ENTITY_FIELDS[asset_type]:
         fields[required(key)] = _entity_selector()
     if asset_type == "controllable_load":
-        entity_key = (
-            vol.Optional("power_entity", default=defaults["power_entity"])
-            if "power_entity" in defaults
-            else vol.Optional("power_entity")
-        )
-        fields[entity_key] = _entity_selector()
         run_started_key = (
             vol.Optional("run_started_at_entity", default=defaults["run_started_at_entity"])
             if "run_started_at_entity" in defaults

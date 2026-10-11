@@ -334,14 +334,8 @@ async def build_request(
             else:
                 result["base_load"] = model
         elif kind == "controllable_load":
-            current_power = (
-                _power(hass, asset.get("power_entity"))
-                if asset.get("power_entity")
-                else None
-            )
             load = {
                 **common,
-                "current_power": current_power,
                 "average_power": asset.get("average_power"),
                 "energy_demand": asset.get("energy_demand"),
                 "earliest_start_time": _schedule_datetime(
