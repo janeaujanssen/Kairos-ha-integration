@@ -22,7 +22,7 @@
           "optimization_steps": "Run the optimization at every Nth time step, from 1 to 1440. 1 runs it at every time step. Default 1.",
           "horizon_hours": "How far ahead the schedule is planned, from 1 to 168 hours. Default 24.",
           "request_timeout": "Maximum wait for one API response, from 1 to 3601 seconds. Must be longer than the solver time limit and shorter than the time step. Default 60.",
-          "failure_threshold": "Failed optimization runs before a repair issue is shown, from 1 to 20. Default 3.",
+          "failure_threshold": "Failed optimization runs before a repair issue is shown in Home Assistant, from 1 to 20. Default 3.",
           "time_limit_s": "Maximum solver run time per optimization, from 1 to 3600 seconds. Default 10.",
           "relative_mip_gap": "Stop once the best schedule is within this relative gap of the best bound, from 0 to 1. Set to 0 to require the solver to prove optimality. Default 0.",
           "switching_penalty": "Softly discourages storage mode changes between time steps. Set to 0 to allow switching freely. Default 0.1.",
@@ -204,9 +204,9 @@
         "description": "Choose Home Assistant entities and enter physical parameters.",
         "data": {
           "name": "Name",
-          "import_price_entity": "Grid Import Price",
+          "import_price_entity": "Grid Import Price Forecast",
           "import_price_forecast_attribute": "Import price forecast attribute",
-          "export_price_entity": "Grid Export Price",
+          "export_price_entity": "Grid Export Price Forecast",
           "export_price_forecast_attribute": "Export price forecast attribute",
           "max_import_power": "Maximum import power [W]",
           "max_export_power": "Maximum export power [W]"
@@ -237,9 +237,9 @@
         "description": "The asset identifier is kept stable so existing entities and history remain linked.",
         "data": {
           "name": "Name",
-          "import_price_entity": "Grid Import Price",
+          "import_price_entity": "Grid Import Price Forecast",
           "import_price_forecast_attribute": "Import price forecast attribute",
-          "export_price_entity": "Grid Export Price",
+          "export_price_entity": "Grid Export Price Forecast",
           "export_price_forecast_attribute": "Export price forecast attribute",
           "max_import_power": "Maximum import power [W]",
           "max_export_power": "Maximum export power [W]"
