@@ -26,21 +26,21 @@ from .const import (
     CONF_FAILURE_THRESHOLD,
     CONF_GRID_PEAK_PENALTY,
     CONF_HORIZON_HOURS,
+    CONF_OPTIMIZATION_STEPS,
     CONF_RELATIVE_MIP_GAP,
     CONF_REQUEST_TIMEOUT,
     CONF_SWITCHING_PENALTY,
     CONF_TIME_STEP_MINUTES,
     CONF_TIME_LIMIT_S,
-    CONF_UPDATE_INTERVAL,
     DEFAULT_FAILURE_THRESHOLD,
     DEFAULT_GRID_PEAK_PENALTY,
     DEFAULT_HORIZON_HOURS,
+    DEFAULT_OPTIMIZATION_STEPS,
     DEFAULT_RELATIVE_MIP_GAP,
     DEFAULT_REQUEST_TIMEOUT,
     DEFAULT_SWITCHING_PENALTY,
     DEFAULT_TIME_STEP_MINUTES,
     DEFAULT_TIME_LIMIT_S,
-    DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
 )
 from .request import build_request
@@ -69,8 +69,8 @@ class KairosCoordinator:
         self._last_api_status: int | None = None
         self._last_error: str | None = None
         self._schedules: dict[str, Any] = {}
-        self._last_optimization_monotonic: float | None = None
         self._rejected_payload_fingerprint: str | None = None
+        self._last_optimized_slot: int | None = None
         self._force_update = False
         self._cancel_tick: Callable[[], None] | None = None
         self.api = KairosApi(
@@ -123,11 +123,9 @@ class KairosCoordinator:
 
     def _schedule_next_tick(self) -> None:
         """Schedule the next refresh just after an aligned optimization boundary."""
-        interval_minutes = min(
-            self.config.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL),
-            self.config.get(CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES),
+        interval_seconds = (
+            self.config.get(CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES) * 60
         )
-        interval_seconds = interval_minutes * 60
         now = dt_util.utcnow()
         next_epoch = (
             (int(now.timestamp()) // interval_seconds + 1) * interval_seconds + 1
@@ -137,9 +135,25 @@ class KairosCoordinator:
             self.hass, delay, self._handle_schedule_tick
         )
 
+    def _claim_optimization_slot(self) -> bool:
+        """Return whether the current time slot starts an optimization run."""
+        step_seconds = (
+            self.config.get(CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES) * 60
+        )
+        slot = int(dt_util.utcnow().timestamp()) // step_seconds
+        every = int(self.config.get(CONF_OPTIMIZATION_STEPS, DEFAULT_OPTIMIZATION_STEPS))
+        due = (
+            self._force_update
+            or self._last_optimized_slot is None
+            or (slot % every == 0 and slot != self._last_optimized_slot)
+        )
+        if due:
+            self._last_optimized_slot = slot
+        return due
+
     @callback
     def _handle_schedule_tick(self, _now: datetime) -> None:
-        """Refresh entities and optimize if their configured interval is due."""
+        """Refresh entities at each time step; optimize only when due."""
         del _now
         self.hass.async_create_task(self.coordinator.async_refresh())
         self._schedule_next_tick()
@@ -161,17 +175,8 @@ class KairosCoordinator:
     async def _async_update_data(self) -> dict[str, Any]:
         """Build and submit one snapshot, retaining schedules on failure."""
         started = monotonic()
-        interval_seconds = (
-            self.config.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL) * 60
-        )
-        if (
-            not self._force_update
-            and self._last_optimization_monotonic is not None
-            and started - self._last_optimization_monotonic < interval_seconds
-        ):
+        if not self._claim_optimization_slot():
             return self._sensor_data()
-
-        self._last_optimization_monotonic = started
         self._last_run = dt_util.now().isoformat()
         self._last_api_request = None
         self._last_api_response = None
@@ -209,7 +214,6 @@ class KairosCoordinator:
             self._last_api_request = payload
             result = await self.api.async_optimize(payload)
             self._last_api_response = result
-            self._last_optimization_monotonic = monotonic()
             self._duration = monotonic() - started
             self._last_run = payload["timestamp"]
 

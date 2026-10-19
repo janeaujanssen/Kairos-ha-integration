@@ -12,6 +12,7 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.network import NoURLAvailableError, get_url
 
 from .const import (
     ASSET_TYPES,
@@ -20,22 +21,22 @@ from .const import (
     CONF_FAILURE_THRESHOLD,
     CONF_GRID_PEAK_PENALTY,
     CONF_HORIZON_HOURS,
+    CONF_OPTIMIZATION_STEPS,
     CONF_RELATIVE_MIP_GAP,
     CONF_REQUEST_TIMEOUT,
     CONF_SWITCHING_PENALTY,
     CONF_TIME_STEP_MINUTES,
     CONF_TIME_LIMIT_S,
-    CONF_UPDATE_INTERVAL,
     DEFAULT_API_URL,
     DEFAULT_FAILURE_THRESHOLD,
     DEFAULT_GRID_PEAK_PENALTY,
     DEFAULT_HORIZON_HOURS,
+    DEFAULT_OPTIMIZATION_STEPS,
     DEFAULT_RELATIVE_MIP_GAP,
     DEFAULT_REQUEST_TIMEOUT,
     DEFAULT_SWITCHING_PENALTY,
     DEFAULT_TIME_STEP_MINUTES,
     DEFAULT_TIME_LIMIT_S,
-    DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
 )
 
@@ -259,6 +260,17 @@ def _asset_schema(
     return vol.Schema(fields)
 
 
+def _default_api_url(hass: HomeAssistant) -> str:
+    """Return the Kairos API URL on the Home Assistant host."""
+    try:
+        host = urlparse(get_url(hass, allow_external=False)).hostname
+    except NoURLAvailableError:
+        return DEFAULT_API_URL
+    if not host:
+        return DEFAULT_API_URL
+    return f"http://{host}:{urlparse(DEFAULT_API_URL).port}"
+
+
 async def _check_api(hass: HomeAssistant, api_url: str, timeout: int) -> None:
     """Verify that the configured Kairos endpoint is healthy."""
     session: ClientSession = async_get_clientsession(hass)
@@ -289,12 +301,10 @@ class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             parsed = urlparse(api_url)
             if parsed.scheme not in ("http", "https") or not parsed.netloc:
                 errors["base"] = "invalid_url"
-            elif user_input[CONF_REQUEST_TIMEOUT] >= user_input[CONF_UPDATE_INTERVAL] * 60:
+            elif user_input[CONF_REQUEST_TIMEOUT] >= user_input[CONF_TIME_STEP_MINUTES] * 60:
                 errors["base"] = "timeout_too_long"
             elif user_input[CONF_REQUEST_TIMEOUT] <= user_input[CONF_TIME_LIMIT_S]:
                 errors["base"] = "request_timeout_too_short"
-            elif user_input[CONF_UPDATE_INTERVAL] % user_input[CONF_TIME_STEP_MINUTES]:
-                errors["base"] = "interval_not_multiple"
             else:
                 try:
                     await _check_api(
@@ -310,8 +320,8 @@ class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     settings = {
                         **user_input,
                         CONF_API_URL: api_url,
-                        CONF_UPDATE_INTERVAL: int(user_input[CONF_UPDATE_INTERVAL]),
                         CONF_TIME_STEP_MINUTES: int(user_input[CONF_TIME_STEP_MINUTES]),
+                        CONF_OPTIMIZATION_STEPS: int(user_input[CONF_OPTIMIZATION_STEPS]),
                         CONF_HORIZON_HOURS: int(user_input[CONF_HORIZON_HOURS]),
                         CONF_REQUEST_TIMEOUT: int(user_input[CONF_REQUEST_TIMEOUT]),
                         CONF_FAILURE_THRESHOLD: int(user_input[CONF_FAILURE_THRESHOLD]),
@@ -328,17 +338,17 @@ class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema = vol.Schema(
             {
                 vol.Required(
-                    CONF_API_URL, default=DEFAULT_API_URL
+                    CONF_API_URL, default=_default_api_url(self.hass)
                 ): selector.TextSelector(),
                 vol.Required(
-                    CONF_UPDATE_INTERVAL, default=DEFAULT_UPDATE_INTERVAL
+                    CONF_TIME_STEP_MINUTES, default=DEFAULT_TIME_STEP_MINUTES
                 ): selector.NumberSelector(
                     selector.NumberSelectorConfig(
                         min=1, max=1440, step=1, mode=selector.NumberSelectorMode.BOX
                     )
                 ),
                 vol.Required(
-                    CONF_TIME_STEP_MINUTES, default=DEFAULT_TIME_STEP_MINUTES
+                    CONF_OPTIMIZATION_STEPS, default=DEFAULT_OPTIMIZATION_STEPS
                 ): selector.NumberSelector(
                     selector.NumberSelectorConfig(
                         min=1, max=1440, step=1, mode=selector.NumberSelectorMode.BOX
@@ -434,13 +444,7 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
     ) -> config_entries.FlowResult:
         """Update global settings."""
         if user_input is not None:
-            if user_input[CONF_UPDATE_INTERVAL] % user_input[CONF_TIME_STEP_MINUTES]:
-                return self.async_show_form(
-                    step_id="settings",
-                    data_schema=self._options_schema(),
-                    errors={"base": "interval_not_multiple"},
-                )
-            if user_input[CONF_REQUEST_TIMEOUT] >= user_input[CONF_UPDATE_INTERVAL] * 60:
+            if user_input[CONF_REQUEST_TIMEOUT] >= user_input[CONF_TIME_STEP_MINUTES] * 60:
                 return self.async_show_form(
                     step_id="settings",
                     data_schema=self._options_schema(),
@@ -457,6 +461,7 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
                 data={
                     **self.config_entry.options,
                     **user_input,
+                    CONF_OPTIMIZATION_STEPS: int(user_input[CONF_OPTIMIZATION_STEPS]),
                     CONF_TIME_LIMIT_S: int(user_input[CONF_TIME_LIMIT_S]),
                     CONF_RELATIVE_MIP_GAP: float(user_input[CONF_RELATIVE_MIP_GAP]),
                     CONF_SWITCHING_PENALTY: float(user_input[CONF_SWITCHING_PENALTY]),
@@ -609,17 +614,19 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
         return vol.Schema(
             {
                 vol.Required(
-                    CONF_UPDATE_INTERVAL,
-                    default=settings.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL),
-                ): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=1, max=1440, step=1, mode=selector.NumberSelectorMode.BOX
-                        )
-                ),
-                vol.Required(
                     CONF_TIME_STEP_MINUTES,
                     default=settings.get(
                         CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES
+                    ),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=1, max=1440, step=1, mode=selector.NumberSelectorMode.BOX
+                    )
+                ),
+                vol.Required(
+                    CONF_OPTIMIZATION_STEPS,
+                    default=settings.get(
+                        CONF_OPTIMIZATION_STEPS, DEFAULT_OPTIMIZATION_STEPS
                     ),
                 ): selector.NumberSelector(
                     selector.NumberSelectorConfig(

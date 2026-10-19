@@ -6,8 +6,8 @@
         "description": "Connect to the Kairos API and set the optimization schedule. Configure assets after setup.",
         "data": {
           "api_url": "Kairos API URL",
-          "update_interval": "Optimization interval [min]",
           "time_step_minutes": "Schedule time step [min]",
+          "optimization_steps": "Optimize every N time steps",
           "horizon_hours": "Planning horizon [h]",
           "request_timeout": "Request timeout [s]",
           "failure_threshold": "Failures before repair issue",
@@ -15,15 +15,26 @@
           "relative_mip_gap": "Relative MIP gap [0-1]",
           "switching_penalty": "Storage switching penalty [cost per mode change]",
           "grid_peak_penalty": "Grid peak penalty [relative weight]"
+        },
+        "data_description": {
+          "api_url": "Base URL of the Kairos API including the port, for example http://192.168.1.50:8000.",
+          "time_step_minutes": "Length of each schedule slot, from 1 to 1440 minutes. Default 15.",
+          "optimization_steps": "Run the optimization at every Nth time step, from 1 to 1440. 1 runs it at every time step. Default 1.",
+          "horizon_hours": "How far ahead the schedule is planned, from 1 to 168 hours. Default 24.",
+          "request_timeout": "Maximum wait for one API response, from 1 to 3601 seconds. Must be longer than the solver time limit and shorter than the time step. Default 60.",
+          "failure_threshold": "Failed optimization runs before a repair issue is shown, from 1 to 20. Default 3.",
+          "time_limit_s": "Maximum solver run time per optimization, from 1 to 3600 seconds. Default 10.",
+          "relative_mip_gap": "Stop once the best schedule is within this relative gap of the best bound, from 0 to 1. Set to 0 to require the solver to prove optimality. Default 0.",
+          "switching_penalty": "Softly discourages storage mode changes between time steps. Set to 0 to allow switching freely. Default 0.1.",
+          "grid_peak_penalty": "Dimensionless weight. At 0.40 currency/kWh with 15-minute steps, 0.1 means the optimizer can accept up to 1 cent higher energy cost for a 1 kW lower grid peak. Set to 0 to disable. Default 0.1."
         }
       }
     },
     "error": {
       "invalid_url": "Enter a valid HTTP or HTTPS URL.",
       "cannot_connect": "Could not reach a healthy Kairos API at this URL.",
-      "timeout_too_long": "The request timeout must be shorter than the optimization interval.",
-      "request_timeout_too_short": "The request timeout must be longer than the solver time limit.",
-      "interval_not_multiple": "The optimization interval must be a multiple of the time step."
+      "timeout_too_long": "The request timeout must be shorter than the schedule time step.",
+      "request_timeout_too_short": "The request timeout must be longer than the solver time limit."
     },
     "abort": {
       "already_configured": "This Kairos API URL is already configured."
@@ -42,10 +53,10 @@
       },
       "settings": {
         "title": "Kairos settings",
-        "description": "Set the optimization schedule and solver behavior.",
+        "description": "Set the schedule time step and solver behavior.",
         "data": {
-          "update_interval": "Optimization interval [min]",
           "time_step_minutes": "Schedule time step [min]",
+          "optimization_steps": "Optimize every N time steps",
           "horizon_hours": "Planning horizon [h]",
           "request_timeout": "Request timeout [s]",
           "failure_threshold": "Failures before repair issue",
@@ -53,6 +64,17 @@
           "relative_mip_gap": "Relative MIP gap [0-1]",
           "switching_penalty": "Storage switching penalty [cost per mode change]",
           "grid_peak_penalty": "Grid peak penalty [relative weight]"
+        },
+        "data_description": {
+          "time_step_minutes": "Length of each schedule slot, from 1 to 1440 minutes. Default 15.",
+          "optimization_steps": "Run the optimization at every Nth time step, from 1 to 1440. 1 runs it at every time step. Default 1.",
+          "horizon_hours": "How far ahead the schedule is planned, from 1 to 168 hours. Default 24.",
+          "request_timeout": "Maximum wait for one API response, from 1 to 3601 seconds. Must be longer than the solver time limit and shorter than the time step. Default 60.",
+          "failure_threshold": "Failed optimization runs before a repair issue is shown, from 1 to 20. Default 3.",
+          "time_limit_s": "Maximum solver run time per optimization, from 1 to 3600 seconds. Default 10.",
+          "relative_mip_gap": "Stop once the best schedule is within this relative gap of the best bound, from 0 to 1. Set to 0 to require the solver to prove optimality. Default 0.",
+          "switching_penalty": "Softly discourages storage mode changes between time steps. Set to 0 to allow switching freely. Default 0.1.",
+          "grid_peak_penalty": "Dimensionless weight. At 0.40 currency/kWh with 15-minute steps, 0.1 means the optimizer can accept up to 1 cent higher energy cost for a 1 kW lower grid peak. Set to 0 to disable. Default 0.1."
         }
       },
       "add_asset": {
@@ -187,8 +209,8 @@
       }
     },
     "error": {
-      "timeout_too_long": "The request timeout must be shorter than the optimization interval.",
-      "interval_not_multiple": "The optimization interval must be a multiple of the time step.",
+      "timeout_too_long": "The request timeout must be shorter than the schedule time step.",
+      "request_timeout_too_short": "The request timeout must be longer than the solver time limit.",
       "duplicate_asset_name": "Asset names must be unique.",
       "duplicate_required_asset": "Only one grid and one base load can be configured."
     },
