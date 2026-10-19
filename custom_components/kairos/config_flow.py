@@ -41,14 +41,14 @@ from .const import (
 )
 
 _ASSET_LABELS = {
-    "grid": "Grid connection",
-    "pv": "PV system",
-    "base_load": "Household base load",
-    "controllable_load": "Controllable load",
-    "home_battery": "Home battery",
-    "ev_battery": "EV battery",
-    "dhw_tank": "DHW tank",
-    "building_thermal_mass": "Building thermal mass",
+    "grid": "⚡ Grid",
+    "pv": "🔆 Solar",
+    "base_load": "🏠 Base Load",
+    "controllable_load": "🔌 Controllable Load",
+    "home_battery": "🔋 Home Battery",
+    "ev_battery": "🚗 EV Battery",
+    "dhw_tank": "💧 DHW Tank",
+    "building_thermal_mass": "🏢 Building Thermal Mass",
 }
 
 _STATIC_FIELDS: dict[str, float] = {
