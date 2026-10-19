@@ -1,6 +1,6 @@
 {
   "domain": "kairos",
-  "name": "Kairos Energy Optimization",
+  "name": "Kairos",
   "codeowners": [],
   "config_flow": true,
   "documentation": "https://github.com/janeaujanssen/Kairos-ha-integration",
