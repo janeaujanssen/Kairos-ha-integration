@@ -209,9 +209,17 @@ def _asset_schema(
                     default=defaults.get("positive_means_import", True),
                 )
             ] = selector.BooleanSelector()
+        if key == "power_entity" and asset_type == "pv":
+            fields[
+                vol.Required(
+                    "positive_is_production",
+                    default=defaults.get("positive_is_production", True),
+                )
+            ] = selector.BooleanSelector()
         if key in _ENTITY_ATTRIBUTE_FIELDS:
             attribute = _ENTITY_ATTRIBUTE_FIELDS[key]
-            fields[vol.Required(attribute, default=defaults.get(attribute, "forecast"))] = (
+            attribute_default = "prices" if "price" in attribute else "forecast"
+            fields[vol.Required(attribute, default=defaults.get(attribute, attribute_default))] = (
                 selector.TextSelector()
             )
     if asset_type == "controllable_load":

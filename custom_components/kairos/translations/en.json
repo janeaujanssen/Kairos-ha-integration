@@ -225,12 +225,14 @@
         "description": "Choose Home Assistant entities and enter physical parameters.",
         "data": {
           "name": "Name",
-          "power_entity": "Solar Production Power (+/- sensor)",
+          "power_entity": "Solar Production Power",
+          "positive_is_production": "Positive solar power means production",
           "power_forecast_entity": "Solar Production Energy",
           "power_forecast_attribute": "Power forecast attribute"
         },
         "data_description": {
-          "power_entity": "Current solar production power sensor."
+          "power_entity": "Current solar production power sensor.",
+          "positive_is_production": "On if a positive power value means production, off if a negative value means production."
         }
       },
       "add_asset_config_base_load": {
@@ -268,12 +270,14 @@
         "description": "The asset identifier is kept stable so existing entities and history remain linked.",
         "data": {
           "name": "Name",
-          "power_entity": "Solar Production Power (+/- sensor)",
+          "power_entity": "Solar Production Power",
+          "positive_is_production": "Positive solar power means production",
           "power_forecast_entity": "Solar Production Energy",
           "power_forecast_attribute": "Power forecast attribute"
         },
         "data_description": {
-          "power_entity": "Current solar production power sensor."
+          "power_entity": "Current solar production power sensor.",
+          "positive_is_production": "On if a positive power value means production, off if a negative value means production."
         }
       },
       "edit_asset_config_base_load": {

@@ -291,7 +291,7 @@ async def build_request(
                 "import_price_forecast": _forecast(
                     hass,
                     asset.get("import_price_entity"),
-                    asset.get("import_price_forecast_attribute", "forecast"),
+                    asset.get("import_price_forecast_attribute", "prices"),
                     steps,
                     "price",
                     start_time=request_start,
@@ -300,7 +300,7 @@ async def build_request(
                 "export_price_forecast": _forecast(
                     hass,
                     asset.get("export_price_entity"),
-                    asset.get("export_price_forecast_attribute", "forecast"),
+                    asset.get("export_price_forecast_attribute", "prices"),
                     steps,
                     "price",
                     start_time=request_start,
@@ -309,6 +309,8 @@ async def build_request(
             }
         elif kind in ("pv", "base_load"):
             current_power = _power(hass, asset.get("power_entity"))
+            if kind == "pv" and not asset.get("positive_is_production", True):
+                current_power = -current_power if current_power is not None else None
             if kind == "pv":
                 forecast = _forecast(
                     hass,
