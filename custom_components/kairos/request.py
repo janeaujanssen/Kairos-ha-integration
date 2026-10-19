@@ -280,12 +280,8 @@ async def build_request(
         common = {"id": asset.get("id"), "name": asset.get("name")}
         kind = asset.get("asset_type")
         if kind == "grid":
-            grid_power = _power(hass, asset.get("power_entity"))
-            if not asset.get("positive_means_import", True):
-                grid_power = -grid_power if grid_power is not None else None
             result["grid"] = {
                 **common,
-                "current_power": grid_power,
                 "max_import_power": asset.get("max_import_power"),
                 "max_export_power": asset.get("max_export_power"),
                 "import_price_forecast": _forecast(
@@ -307,34 +303,32 @@ async def build_request(
                     step_minutes=time_step_minutes,
                 ),
             }
-        elif kind in ("pv", "base_load"):
+        elif kind == "pv":
+            forecast = _forecast(
+                hass,
+                asset.get("power_forecast_entity"),
+                asset.get("power_forecast_attribute"),
+                steps,
+                "power",
+                start_time=request_start,
+                step_minutes=time_step_minutes,
+            )
+            result["pv"].append({**common, "power_forecast": forecast})
+        elif kind == "base_load":
             current_power = _power(hass, asset.get("power_entity"))
-            if kind == "pv" and not asset.get("positive_is_production", True):
-                current_power = -current_power if current_power is not None else None
-            if kind == "pv":
-                forecast = _forecast(
-                    hass,
-                    asset.get("power_forecast_entity", asset.get("power_entity")),
-                    asset.get("power_forecast_attribute"),
-                    steps,
-                    "power",
-                    start_time=request_start,
-                    step_minutes=time_step_minutes,
-                )
-            else:
-                forecast = await async_forecast_base_load(
-                    hass,
-                    asset.get("power_entity", ""),
-                    request_start,
-                    time_step_minutes,
-                    steps,
-                    current_power,
-                )
-            model = {**common, "current_power": current_power, "power_forecast": forecast}
-            if kind == "pv":
-                result["pv"].append(model)
-            else:
-                result["base_load"] = model
+            forecast = await async_forecast_base_load(
+                hass,
+                asset.get("power_entity", ""),
+                request_start,
+                time_step_minutes,
+                steps,
+                current_power,
+            )
+            result["base_load"] = {
+                **common,
+                "current_power": current_power,
+                "power_forecast": forecast,
+            }
         elif kind == "controllable_load":
             load = {
                 **common,

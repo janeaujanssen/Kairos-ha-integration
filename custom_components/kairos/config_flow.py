@@ -100,8 +100,8 @@ _TEMPERATURE_FIELDS = {
 }
 
 _ASSET_ENTITY_FIELDS: dict[str, tuple[str, ...]] = {
-    "grid": ("power_entity", "import_price_entity", "export_price_entity"),
-    "pv": ("power_entity", "power_forecast_entity"),
+    "grid": ("import_price_entity", "export_price_entity"),
+    "pv": ("power_forecast_entity",),
     "base_load": ("power_entity",),
     "controllable_load": (),
     "home_battery": ("soc_entity",),
@@ -202,20 +202,6 @@ def _asset_schema(
     fields: dict[Any, Any] = {required("name"): selector.TextSelector()}
     for key in _ASSET_ENTITY_FIELDS[asset_type]:
         fields[required(key)] = _entity_selector()
-        if key == "power_entity" and asset_type == "grid":
-            fields[
-                vol.Required(
-                    "positive_means_import",
-                    default=defaults.get("positive_means_import", True),
-                )
-            ] = selector.BooleanSelector()
-        if key == "power_entity" and asset_type == "pv":
-            fields[
-                vol.Required(
-                    "positive_is_production",
-                    default=defaults.get("positive_is_production", True),
-                )
-            ] = selector.BooleanSelector()
         if key in _ENTITY_ATTRIBUTE_FIELDS:
             attribute = _ENTITY_ATTRIBUTE_FIELDS[key]
             attribute_default = "prices" if "price" in attribute else "forecast"
