@@ -201,6 +201,92 @@
           "round_trip_distance": "Round-trip distance [km]"
         }
       },
+      "add_asset_config_grid": {
+        "title": "Configure {asset_type}",
+        "description": "Choose Home Assistant entities and enter physical parameters.",
+        "data": {
+          "name": "Name",
+          "power_entity": "Grid Import/Export Power (+/- sensor)",
+          "positive_means_import": "Positive grid power means import",
+          "import_price_entity": "Grid Import Price",
+          "import_price_forecast_attribute": "Import price forecast attribute",
+          "export_price_entity": "Grid Export Price",
+          "export_price_forecast_attribute": "Export price forecast attribute",
+          "max_import_power": "Maximum import power [W]",
+          "max_export_power": "Maximum export power [W]"
+        },
+        "data_description": {
+          "power_entity": "Net grid power sensor. The switch below sets which sign means import.",
+          "positive_means_import": "On if a positive power value means import from the grid, off if it means export."
+        }
+      },
+      "add_asset_config_pv": {
+        "title": "Configure {asset_type}",
+        "description": "Choose Home Assistant entities and enter physical parameters.",
+        "data": {
+          "name": "Name",
+          "power_entity": "Solar Production Power (+/- sensor)",
+          "power_forecast_entity": "Solar Production Energy",
+          "power_forecast_attribute": "Power forecast attribute"
+        },
+        "data_description": {
+          "power_entity": "Current solar production power sensor."
+        }
+      },
+      "add_asset_config_base_load": {
+        "title": "Configure {asset_type}",
+        "description": "Choose Home Assistant entities and enter physical parameters.",
+        "data": {
+          "name": "Name",
+          "power_entity": "Base Load Power (+/- sensor)"
+        },
+        "data_description": {
+          "power_entity": "Current household base load power sensor."
+        }
+      },
+      "edit_asset_config_grid": {
+        "title": "Edit {asset_type}",
+        "description": "The asset identifier is kept stable so existing entities and history remain linked.",
+        "data": {
+          "name": "Name",
+          "power_entity": "Grid Import/Export Power (+/- sensor)",
+          "positive_means_import": "Positive grid power means import",
+          "import_price_entity": "Grid Import Price",
+          "import_price_forecast_attribute": "Import price forecast attribute",
+          "export_price_entity": "Grid Export Price",
+          "export_price_forecast_attribute": "Export price forecast attribute",
+          "max_import_power": "Maximum import power [W]",
+          "max_export_power": "Maximum export power [W]"
+        },
+        "data_description": {
+          "power_entity": "Net grid power sensor. The switch below sets which sign means import.",
+          "positive_means_import": "On if a positive power value means import from the grid, off if it means export."
+        }
+      },
+      "edit_asset_config_pv": {
+        "title": "Edit {asset_type}",
+        "description": "The asset identifier is kept stable so existing entities and history remain linked.",
+        "data": {
+          "name": "Name",
+          "power_entity": "Solar Production Power (+/- sensor)",
+          "power_forecast_entity": "Solar Production Energy",
+          "power_forecast_attribute": "Power forecast attribute"
+        },
+        "data_description": {
+          "power_entity": "Current solar production power sensor."
+        }
+      },
+      "edit_asset_config_base_load": {
+        "title": "Edit {asset_type}",
+        "description": "The asset identifier is kept stable so existing entities and history remain linked.",
+        "data": {
+          "name": "Name",
+          "power_entity": "Base Load Power (+/- sensor)"
+        },
+        "data_description": {
+          "power_entity": "Current household base load power sensor."
+        }
+      },
       "remove_asset": {
         "title": "Select an optional asset to remove",
         "data": {

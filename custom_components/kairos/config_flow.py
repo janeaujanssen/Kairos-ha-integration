@@ -52,8 +52,8 @@ _ASSET_LABELS = {
 }
 
 _STATIC_FIELDS: dict[str, float] = {
-    "max_import_power": 11000,
-    "max_export_power": 11000,
+    "max_import_power": 17300,
+    "max_export_power": 17300,
     "energy_capacity": 10000,
     "min_soc": 0.1,
     "max_soc": 0.9,
@@ -161,6 +161,23 @@ _ASSET_STATIC_FIELDS: dict[str, tuple[str, ...]] = {
 }
 
 
+_ENTITY_ATTRIBUTE_FIELDS: dict[str, str] = {
+    "import_price_entity": "import_price_forecast_attribute",
+    "export_price_entity": "export_price_forecast_attribute",
+    "power_forecast_entity": "power_forecast_attribute",
+}
+
+# Assets with their own field labels get a dedicated form step.
+_LABELED_ASSET_STEPS = ("grid", "pv", "base_load")
+
+
+def _config_step_id(prefix: str, asset_type: str) -> str:
+    """Return the form step id for an asset type."""
+    if asset_type in _LABELED_ASSET_STEPS:
+        return f"{prefix}_{asset_type}"
+    return prefix
+
+
 def _slugify(value: str) -> str:
     """Return a stable API asset identifier from its display name."""
     slug = re.sub(r"[^a-z0-9]+", "_", value.casefold()).strip("_")
@@ -185,6 +202,18 @@ def _asset_schema(
     fields: dict[Any, Any] = {required("name"): selector.TextSelector()}
     for key in _ASSET_ENTITY_FIELDS[asset_type]:
         fields[required(key)] = _entity_selector()
+        if key == "power_entity" and asset_type == "grid":
+            fields[
+                vol.Required(
+                    "positive_means_import",
+                    default=defaults.get("positive_means_import", True),
+                )
+            ] = selector.BooleanSelector()
+        if key in _ENTITY_ATTRIBUTE_FIELDS:
+            attribute = _ENTITY_ATTRIBUTE_FIELDS[key]
+            fields[vol.Required(attribute, default=defaults.get(attribute, "forecast"))] = (
+                selector.TextSelector()
+            )
     if asset_type == "controllable_load":
         run_started_key = (
             vol.Optional("run_started_at_entity", default=defaults["run_started_at_entity"])
@@ -222,21 +251,6 @@ def _asset_schema(
             number_selector
         )
 
-    if asset_type == "grid":
-        fields[vol.Required("positive_means_import", default=defaults.get("positive_means_import", True))] = (
-            selector.BooleanSelector()
-        )
-        for key in (
-            "import_price_forecast_attribute",
-            "export_price_forecast_attribute",
-        ):
-            fields[vol.Required(key, default=defaults.get(key, "forecast"))] = (
-                selector.TextSelector()
-            )
-    if asset_type == "pv":
-        fields[vol.Required("power_forecast_attribute", default=defaults.get("power_forecast_attribute", "forecast"))] = (
-            selector.TextSelector()
-        )
     if asset_type == "ev_battery":
         for key, default in (
             ("expected_departure_time", "09:00"),
@@ -480,7 +494,7 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
         """Select a new asset type."""
         if user_input is not None:
             self._asset_type = user_input["asset_type"]
-            return await self.async_step_add_asset_config()
+            return await self._async_add_asset_config()
         labels = {asset_type: _ASSET_LABELS[asset_type] for asset_type in ASSET_TYPES}
         return self.async_show_form(
             step_id="add_asset",
@@ -491,6 +505,30 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
         """Configure and save a new asset."""
+        return await self._async_add_asset_config(user_input)
+
+    async def async_step_add_asset_config_grid(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Configure a grid asset."""
+        return await self._async_add_asset_config(user_input)
+
+    async def async_step_add_asset_config_pv(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Configure a solar asset."""
+        return await self._async_add_asset_config(user_input)
+
+    async def async_step_add_asset_config_base_load(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Configure a base load asset."""
+        return await self._async_add_asset_config(user_input)
+
+    async def _async_add_asset_config(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Validate and save a new asset, or show its form."""
         assert self._asset_type is not None
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -508,7 +546,7 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
                 assets.append(asset)
                 return self._save_assets(assets)
         return self.async_show_form(
-            step_id="add_asset_config",
+            step_id=_config_step_id("add_asset_config", self._asset_type),
             data_schema=_asset_schema(self._asset_type),
             errors=errors,
             description_placeholders={"asset_type": _ASSET_LABELS[self._asset_type]},
@@ -524,7 +562,7 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
             self._asset_type = next(
                 item["asset_type"] for item in assets if item["id"] == self._editing_id
             )
-            return await self.async_step_edit_asset_config()
+            return await self._async_edit_asset_config()
         return self.async_show_form(
             step_id="edit_asset",
             data_schema=vol.Schema(
@@ -537,6 +575,30 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
         )
 
     async def async_step_edit_asset_config(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Save edits to a generic asset."""
+        return await self._async_edit_asset_config(user_input)
+
+    async def async_step_edit_asset_config_grid(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Save edits to a grid asset."""
+        return await self._async_edit_asset_config(user_input)
+
+    async def async_step_edit_asset_config_pv(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Save edits to a solar asset."""
+        return await self._async_edit_asset_config(user_input)
+
+    async def async_step_edit_asset_config_base_load(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Save edits to a base load asset."""
+        return await self._async_edit_asset_config(user_input)
+
+    async def _async_edit_asset_config(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
         """Save edits while retaining the asset's stable API identifier."""
@@ -563,7 +625,7 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
                 ]
                 return self._save_assets(assets)
         return self.async_show_form(
-            step_id="edit_asset_config",
+            step_id=_config_step_id("edit_asset_config", self._asset_type),
             data_schema=_asset_schema(self._asset_type, original),
             errors=errors,
             description_placeholders={"asset_type": _ASSET_LABELS[self._asset_type]},
