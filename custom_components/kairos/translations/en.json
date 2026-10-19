@@ -70,7 +70,7 @@
           "optimization_steps": "Run the optimization at every Nth time step, from 1 to 1440. 1 runs it at every time step. Default 1.",
           "horizon_hours": "How far ahead the schedule is planned, from 1 to 168 hours. Default 24.",
           "request_timeout": "Maximum wait for one API response, from 1 to 3601 seconds. Must be longer than the solver time limit and shorter than the time step. Default 60.",
-          "failure_threshold": "Failed optimization runs before a repair issue is shown, from 1 to 20. Default 3.",
+          "failure_threshold": "Failed optimization runs before a repair issue is shown in Home Assistant, from 1 to 20. Default 3.",
           "time_limit_s": "Maximum solver run time per optimization, from 1 to 3600 seconds. Default 10.",
           "relative_mip_gap": "Stop once the best schedule is within this relative gap of the best bound, from 0 to 1. Set to 0 to require the solver to prove optimality. Default 0.",
           "switching_penalty": "Softly discourages storage mode changes between time steps. Set to 0 to allow switching freely. Default 0.1.",
@@ -89,7 +89,7 @@
         "data": {
           "name": "Name",
           "power_entity": "Current power [W]",
-          "run_started_at_entity": "Run start time [date and time]",
+          "run_started_at": "Run start time [date and time]",
           "soc_entity": "Current state of charge (SoC) [0-1]",
           "water_temperature_entity": "Current water temperature [°C]",
           "indoor_temperature_entity": "Current indoor temperature [°C]",
@@ -150,7 +150,7 @@
         "data": {
           "name": "Name",
           "power_entity": "Current power [W]",
-          "run_started_at_entity": "Run start time [date and time]",
+          "run_started_at": "Run start time [date and time]",
           "soc_entity": "Current state of charge (SoC) [0-1]",
           "water_temperature_entity": "Current water temperature [°C]",
           "indoor_temperature_entity": "Current indoor temperature [°C]",
@@ -204,12 +204,12 @@
         "description": "Choose Home Assistant entities and enter physical parameters.",
         "data": {
           "name": "Name",
-          "import_price_entity": "Grid Import Price Forecast",
-          "import_price_forecast_attribute": "Import price forecast attribute",
-          "export_price_entity": "Grid Export Price Forecast",
-          "export_price_forecast_attribute": "Export price forecast attribute",
-          "max_import_power": "Maximum import power [W]",
-          "max_export_power": "Maximum export power [W]"
+          "import_price_entity": "Grid import price forecast [currency/kWh]",
+          "import_price_forecast_attribute": "Grid import price forecast attribute [currency/kWh]",
+          "export_price_entity": "Grid export price forecast [currency/kWh]",
+          "export_price_forecast_attribute": "Grid export price forecast attribute [currency/kWh]",
+          "max_import_power": "Maximum grid import power [W]",
+          "max_export_power": "Maximum grid export power [W]"
         }
       },
       "add_asset_config_pv": {
@@ -217,8 +217,8 @@
         "description": "Choose Home Assistant entities and enter physical parameters.",
         "data": {
           "name": "Name",
-          "power_forecast_entity": "Solar Production Power Forecast",
-          "power_forecast_attribute": "Power forecast attribute"
+          "power_forecast_entity": "Solar production power forecast [W]",
+          "power_forecast_attribute": "Solar production power forecast attribute [W]"
         }
       },
       "add_asset_config_base_load": {
@@ -226,10 +226,10 @@
         "description": "Choose Home Assistant entities and enter physical parameters.",
         "data": {
           "name": "Name",
-          "power_entity": "Base Load Power (+/- sensor)"
+          "power_entity": "Base load power (+/- sensor) [W]"
         },
         "data_description": {
-          "power_entity": "Current household base load power sensor."
+          "power_entity": "The household's electrical power draw excluding every device modelled in Kairos (e.g. Home Battery and EV Battery charging, DHW Tank and Building Thermal Mass heat pumps, Controllable Loads). For the heat pump, only the power offsets w.r.t. the default weather compensation power need to be excluded."
         }
       },
       "edit_asset_config_grid": {
@@ -237,12 +237,12 @@
         "description": "The asset identifier is kept stable so existing entities and history remain linked.",
         "data": {
           "name": "Name",
-          "import_price_entity": "Grid Import Price Forecast",
-          "import_price_forecast_attribute": "Import price forecast attribute",
-          "export_price_entity": "Grid Export Price Forecast",
-          "export_price_forecast_attribute": "Export price forecast attribute",
-          "max_import_power": "Maximum import power [W]",
-          "max_export_power": "Maximum export power [W]"
+          "import_price_entity": "Grid import price forecast [currency/kWh]",
+          "import_price_forecast_attribute": "Grid import price forecast attribute [currency/kWh]",
+          "export_price_entity": "Grid export price forecast [currency/kWh]",
+          "export_price_forecast_attribute": "Grid export price forecast attribute [currency/kWh]",
+          "max_import_power": "Maximum grid import power [W]",
+          "max_export_power": "Maximum grid export power [W]"
         }
       },
       "edit_asset_config_pv": {
@@ -250,8 +250,8 @@
         "description": "The asset identifier is kept stable so existing entities and history remain linked.",
         "data": {
           "name": "Name",
-          "power_forecast_entity": "Solar Production Power Forecast",
-          "power_forecast_attribute": "Power forecast attribute"
+          "power_forecast_entity": "Solar production power forecast [W]",
+          "power_forecast_attribute": "Solar production power forecast attribute [W]"
         }
       },
       "edit_asset_config_base_load": {
@@ -259,10 +259,10 @@
         "description": "The asset identifier is kept stable so existing entities and history remain linked.",
         "data": {
           "name": "Name",
-          "power_entity": "Base Load Power (+/- sensor)"
+          "power_entity": "Base load power (+/- sensor) [W]"
         },
         "data_description": {
-          "power_entity": "Current household base load power sensor."
+          "power_entity": "The household's electrical power draw excluding every device modelled in Kairos (e.g. Home Battery and EV Battery charging, DHW Tank and Building Thermal Mass heat pumps, Controllable Loads). For the heat pump, only the power offsets w.r.t. the default weather compensation power need to be excluded."
         }
       },
       "remove_asset": {

@@ -210,11 +210,14 @@ def _asset_schema(
             )
     if asset_type == "controllable_load":
         run_started_key = (
-            vol.Optional("run_started_at_entity", default=defaults["run_started_at_entity"])
-            if "run_started_at_entity" in defaults
-            else vol.Optional("run_started_at_entity")
+            vol.Optional("run_started_at", default=defaults["run_started_at"])
+            if "run_started_at" in defaults
+            else vol.Optional("run_started_at")
         )
-        fields[run_started_key] = _entity_selector()
+        fields[run_started_key] = selector.DateTimeSelector()
+    if asset_type == "controllable_load":
+        fields[required("earliest_start_time")] = selector.TextSelector()
+        fields[required("latest_finish_time")] = selector.TextSelector()
     for key in _ASSET_STATIC_FIELDS[asset_type]:
         bounds = _BOUNDED_FIELDS.get(key)
         minimum = (
@@ -261,10 +264,6 @@ def _asset_schema(
             fields[vol.Required(key, default=defaults.get(key, default))] = (
                 selector.TextSelector()
             )
-    if asset_type == "controllable_load":
-        fields[required("earliest_start_time")] = selector.TextSelector()
-        fields[required("latest_finish_time")] = selector.TextSelector()
-
     return vol.Schema(fields)
 
 
