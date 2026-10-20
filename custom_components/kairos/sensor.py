@@ -75,7 +75,7 @@ class KairosSetpointSensor(KairosSensor):
         super().__init__(runtime, entry)
         self.asset = asset
         self._attr_unique_id = f"{entry.entry_id}_{asset['id']}_setpoint"
-        self._attr_name = f"{asset['name']} setpoint"
+        self._attr_name = f"{asset['name']} Setpoint"
         self._attr_device_info = self._device_info()
 
     @property
@@ -125,7 +125,7 @@ class KairosModeSensor(KairosSensor):
         super().__init__(runtime, entry)
         self.asset = asset
         self._attr_unique_id = f"{entry.entry_id}_{asset['id']}_mode"
-        self._attr_name = f"{asset['name']} mode"
+        self._attr_name = f"{asset['name']} Mode"
         self._attr_device_info = self._device_info()
 
     @property
@@ -190,7 +190,7 @@ class KairosObjectiveSensor(KairosSensor):
     def __init__(self, runtime: KairosCoordinator, entry: ConfigEntry) -> None:
         super().__init__(runtime, entry)
         self._attr_unique_id = f"{entry.entry_id}_objective_cost"
-        self._attr_name = "Objective cost"
+        self._attr_name = "Objective Cost"
         self._attr_device_info = self._device_info()
 
     @property
@@ -212,7 +212,7 @@ class KairosBaseLoadForecastSensor(KairosSensor):
     def __init__(self, runtime: KairosCoordinator, entry: ConfigEntry) -> None:
         super().__init__(runtime, entry)
         self._attr_unique_id = f"{entry.entry_id}_base_load_forecast"
-        self._attr_name = "Household base load forecast"
+        self._attr_name = "Household Base Load Forecast"
         self._attr_device_info = self._device_info()
 
     @property
@@ -256,7 +256,7 @@ class KairosApiResponseSensor(KairosSensor):
     def __init__(self, runtime: KairosCoordinator, entry: ConfigEntry) -> None:
         super().__init__(runtime, entry)
         self._attr_unique_id = f"{entry.entry_id}_last_api_response"
-        self._attr_name = "Last optimization attempt"
+        self._attr_name = "Last Optimization Attempt"
         self._attr_device_info = self._device_info()
 
     @property
