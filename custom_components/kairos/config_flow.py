@@ -216,8 +216,8 @@ def _asset_schema(
         )
         fields[run_started_key] = _entity_selector()
     if asset_type == "controllable_load":
-        fields[required("earliest_start_time")] = selector.TextSelector()
-        fields[required("latest_finish_time")] = selector.TextSelector()
+        fields[required("earliest_start_time")] = selector.TimeSelector()
+        fields[required("latest_finish_time")] = selector.TimeSelector()
     for key in _ASSET_STATIC_FIELDS[asset_type]:
         bounds = _BOUNDED_FIELDS.get(key)
         minimum = (
