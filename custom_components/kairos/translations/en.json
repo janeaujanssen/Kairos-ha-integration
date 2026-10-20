@@ -89,7 +89,7 @@
         "data": {
           "name": "Name",
           "power_entity": "Current power [W]",
-          "run_started_at": "Run start time [date and time]",
+          "run_started_at": "Run start time [timestamp entity]",
           "soc_entity": "Current state of charge (SoC) [0-1]",
           "water_temperature_entity": "Current water temperature [°C]",
           "indoor_temperature_entity": "Current indoor temperature [°C]",
@@ -150,7 +150,7 @@
         "data": {
           "name": "Name",
           "power_entity": "Current power [W]",
-          "run_started_at": "Run start time [date and time]",
+          "run_started_at": "Run start time [timestamp entity]",
           "soc_entity": "Current state of charge (SoC) [0-1]",
           "water_temperature_entity": "Current water temperature [°C]",
           "indoor_temperature_entity": "Current indoor temperature [°C]",

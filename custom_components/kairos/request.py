@@ -223,10 +223,15 @@ def _schedule_datetime(value: str | None, now: datetime) -> str | None:
     return _daily_datetime(value, now)
 
 
-def _run_started_datetime(value: str | None, now: datetime) -> str | None:
-    """Parse the configured ISO date-time of an already started run."""
+def _run_started_datetime(
+    hass: HomeAssistant, entity_id: str | None, now: datetime
+) -> str | None:
+    """Parse the timestamp state of the entity marking an already started run."""
+    state = _state(hass, entity_id)
+    if state is None:
+        return None
     try:
-        parsed = dt_util.parse_datetime(value) if value else None
+        parsed = dt_util.parse_datetime(state.state)
     except (TypeError, ValueError):
         return None
     if parsed is None:
@@ -338,7 +343,7 @@ async def build_request(
                 ),
             }
             run_started_at = _run_started_datetime(
-                asset.get("run_started_at"), now
+                hass, asset.get("run_started_at"), now
             )
             if run_started_at is not None:
                 load["run_started_at"] = run_started_at

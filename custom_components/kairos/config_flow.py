@@ -214,7 +214,7 @@ def _asset_schema(
             if "run_started_at" in defaults
             else vol.Optional("run_started_at")
         )
-        fields[run_started_key] = selector.DateTimeSelector()
+        fields[run_started_key] = _entity_selector()
     if asset_type == "controllable_load":
         fields[required("earliest_start_time")] = selector.TextSelector()
         fields[required("latest_finish_time")] = selector.TextSelector()
