@@ -136,6 +136,9 @@
           "heat_pump_cop_default": "Heat pump COP in default mode",
           "vehicle_efficiency": "Vehicle efficiency [km/kWh]",
           "round_trip_distance": "Round-trip distance [km]"
+        },
+        "data_description": {
+          "run_started_at": "An input_datetime helper or timestamp sensor. Your automation sets it to the time the device was turned on."
         }
       },
       "edit_asset": {
@@ -197,6 +200,9 @@
           "heat_pump_cop_default": "Heat pump COP in default mode",
           "vehicle_efficiency": "Vehicle efficiency [km/kWh]",
           "round_trip_distance": "Round-trip distance [km]"
+        },
+        "data_description": {
+          "run_started_at": "An input_datetime helper or timestamp sensor. Your automation sets it to the time the device was turned on."
         }
       },
       "add_asset_config_grid": {
