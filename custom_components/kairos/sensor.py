@@ -75,7 +75,7 @@ class KairosSetpointSensor(KairosSensor):
         super().__init__(runtime, entry)
         self.asset = asset
         self._attr_unique_id = f"{entry.entry_id}_{asset['id']}_setpoint"
-        self._attr_name = f"{asset['name']} Setpoint"
+        self._attr_name = f"{asset['name']} Power Setpoint"
         self._attr_device_info = self._device_info()
 
     @property
