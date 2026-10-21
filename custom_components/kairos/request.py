@@ -208,19 +208,14 @@ def _daily_datetime(value: str | None, now: datetime) -> str | None:
     return candidate.isoformat()
 
 
-def _schedule_datetime(value: str | None, now: datetime) -> str | None:
-    """Resolve a configured date-time or daily HH:MM value."""
+def _clock_time(value: str | None) -> str | None:
+    """Format a configured time as the daily HH:MM the API expects."""
     try:
         if value is None:
             return None
-        parsed = dt_util.parse_datetime(value)
+        return time.fromisoformat(value).strftime("%H:%M")
     except (TypeError, ValueError):
-        parsed = None
-    if parsed is not None:
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=now.tzinfo)
-        return parsed.isoformat()
-    return _daily_datetime(value, now)
+        return None
 
 
 def _run_started_datetime(
@@ -335,12 +330,8 @@ async def build_request(
                 "average_power": asset.get("average_power"),
                 "energy_demand": asset.get("average_power", 0)
                 * asset.get("runtime_h", 0),
-                "earliest_start_time": _schedule_datetime(
-                    asset.get("earliest_start_time"), now
-                ),
-                "latest_finish_time": _schedule_datetime(
-                    asset.get("latest_finish_time"), now
-                ),
+                "earliest_start_time": _clock_time(asset.get("earliest_start_time")),
+                "latest_finish_time": _clock_time(asset.get("latest_finish_time")),
             }
             run_started_at = _run_started_datetime(
                 hass, asset.get("run_started_at"), now
