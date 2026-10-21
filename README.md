@@ -30,9 +30,13 @@ The integration entry can be created before any devices are configured. Automati
 
 Set the update interval and time step in minutes, the planning horizon in hours, the request timeout, and solver settings. The solver settings match the Kairos API: time limit in seconds, relative MIP gap as a fraction from 0 to 1, storage switching penalty, and grid peak penalty. The request timeout must exceed the solver time limit and remain shorter than the update interval; the update interval must be a multiple of the time step.
 
-For each asset, select the relevant state entities and enter physical limits and parameters. A controllable load uses average power and runtime in hours to derive its energy demand; it can optionally select an `input_datetime` helper or timestamp sensor for **Run start time**, which your automation sets to the time the device turned on. EV vehicle efficiency is entered in km/kWh, matching the Kairos app. Forecast attributes are read from the selected entity; forecast values are normalized to one numeric value per time step. The household base-load forecast is generated automatically by averaging recorded power readings from the same weekday and time slot over the previous four weeks. If no matching history is available for a forecast step, that step uses the current power reading. No forecast entity or attribute is needed for the base load. When you call the optimization action, unavailable or invalid entity readings and forecasts are sent as `null` values so the API can validate the request.
+For each asset, select the relevant state entities and enter physical limits and parameters. A controllable load uses average power and runtime in hours to derive its energy demand; it can optionally select an `input_datetime` helper or timestamp sensor for **Run start time**, which your automation sets to the time the device turned on. EV vehicle efficiency is entered in km/kWh, matching the Kairos app. Forecast attributes are read from the selected entity; forecast values are normalized to one numeric value per time step. When you call the optimization action, unavailable or invalid entity readings and forecasts are sent as `null` values so the API can validate the request.
 
 The selected grid power entity is normalized to the API convention: positive means import and negative means export. Select whether the source entity itself reports positive import or positive export. Power entities must use W, kW, or MW; price forecast entities need a price-per-energy unit such as EUR/kWh; SoC may be a fraction or percent; temperatures may be °C or °F.
+
+## Base load forecast
+
+The household base-load forecast is generated automatically by averaging recorded power readings from the same weekday and time slot over the previous four weeks. If no matching history is available for a forecast step, that step uses the current power reading. No forecast entity or attribute is needed for the base load.
 
 ## Configuration inputs
 
