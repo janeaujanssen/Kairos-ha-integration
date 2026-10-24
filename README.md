@@ -152,11 +152,11 @@ The household base-load forecast is generated automatically by averaging recorde
 | Name | Parameter | |
 | Current indoor temperature [°C] | Entity | |
 | Floor area [m²] | Parameter | |
-| Thermal mass coefficient [Wh/m²/°C] | Parameter | |
-| Default weather compensation temperature [°C] | Parameter | |
-| Maximum comfort temperature [°C] | Parameter | |
-| Heating rate (+dT) [°C/h] | Parameter | |
-| Cooldown rate (-dT) [°C/h] | Parameter | |
+| Thermal mass coefficient [Wh/m²/°C] | Parameter | Heat storage capacity of the building per m² of floor area. This does not need be an exact number, the default is generally fine. |
+| Default weather compensation temperature [°C] | Parameter | The temperature setpoint of the weather compensation curve when the heat pump is running normally. |
+| Maximum comfort temperature [°C] | Parameter | Kairos will keep the temperature between this maximum and as a minimum the default temperature above. It defines how much the building can be "charged". |
+| Heating rate (+dT) [°C/h] | Parameter | Indoor temperature rise per hour measured while the heat pump runs in +dT (charge) mode. The heat pump can run in one of 3 modes: charge mode (+dT), discharge mode (-dT), and neutral mode. This empirically determined parameter defines how quickly the building thermal mass can be charged in +dT (charge) mode.  |
+| Cooldown rate (-dT) [°C/h] | Parameter | Indoor temperature drop per hour measured while the heat pump runs in -dT (discharge) mode. |
 | Heat pump COP in charge mode | Parameter | |
 | Heat pump COP in default mode | Parameter | |
 
