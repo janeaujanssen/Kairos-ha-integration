@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -68,6 +68,7 @@ class KairosSetpointSensor(KairosSensor):
     """Current power setpoint with the complete scheduled horizon."""
 
     _attr_native_unit_of_measurement = "W"
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
         self, runtime: KairosCoordinator, entry: ConfigEntry, asset: dict[str, Any]
@@ -208,6 +209,7 @@ class KairosBaseLoadForecastSensor(KairosSensor):
     """Current household base-load forecast with its full horizon."""
 
     _attr_native_unit_of_measurement = "W"
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(self, runtime: KairosCoordinator, entry: ConfigEntry) -> None:
         super().__init__(runtime, entry)
