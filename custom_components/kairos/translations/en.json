@@ -128,7 +128,8 @@
           "evening_peak_energy_demand": "Evening peak energy demand [Wh]",
           "floor_area": "Floor area [m²]",
           "thermal_mass_coefficient": "Thermal mass coefficient [Wh/m²/°C]",
-          "default_weather_compensation_temperature": "Default weather compensation temperature [°C]",
+          "min_room_temperature": "Min room temperature [°C]",
+          "max_room_temperature": "Max room temperature [°C]",
           "max_comfort_temperature": "Maximum comfort temperature [°C]",
           "heating_rate": "Heating rate (+dT) [°C/h]",
           "cooldown_rate": "Cooldown rate (-dT) [°C/h]",
@@ -140,7 +141,8 @@
         "data_description": {
           "run_started_at": "An input_datetime helper or timestamp sensor. Your automation sets it to the time the device was turned on.",
           "thermal_mass_coefficient": "Heat storage capacity of the building per m² of floor area. This does not need be an exact number, the default is generally fine.",
-          "default_weather_compensation_temperature": "The temperature setpoint of the weather compensation curve when the heat pump is running normally.",
+          "min_room_temperature": "Physical room temperature that corresponds to 0% state of charge.",
+          "max_room_temperature": "Physical room temperature that corresponds to 100% state of charge.",
           "max_comfort_temperature": "Kairos will keep the temperature between this maximum and as a minimum the default temperature above. It defines how much the building can be \"charged\".",
           "heating_rate": "Indoor temperature rise per hour measured while the heat pump runs in +dT (charge) mode. The heat pump can run in one of 3 modes: charge mode (+dT), discharge mode (-dT), and neutral mode. This empirically determined parameter defines how quickly the building thermal mass can be charged in +dT (charge) mode.",
           "cooldown_rate": "Indoor temperature drop per hour measured while the heat pump runs in -dT (discharge) mode."
@@ -197,7 +199,8 @@
           "evening_peak_energy_demand": "Evening peak energy demand [Wh]",
           "floor_area": "Floor area [m²]",
           "thermal_mass_coefficient": "Thermal mass coefficient [Wh/m²/°C]",
-          "default_weather_compensation_temperature": "Default weather compensation temperature [°C]",
+          "min_room_temperature": "Min room temperature [°C]",
+          "max_room_temperature": "Max room temperature [°C]",
           "max_comfort_temperature": "Maximum comfort temperature [°C]",
           "heating_rate": "Heating rate (+dT) [°C/h]",
           "cooldown_rate": "Cooldown rate (-dT) [°C/h]",
@@ -209,7 +212,8 @@
         "data_description": {
           "run_started_at": "An input_datetime helper or timestamp sensor. Your automation sets it to the time the device was turned on.",
           "thermal_mass_coefficient": "Heat storage capacity of the building per m² of floor area. This does not need be an exact number, the default is generally fine.",
-          "default_weather_compensation_temperature": "The temperature setpoint of the weather compensation curve when the heat pump is running normally.",
+          "min_room_temperature": "Physical room temperature that corresponds to 0% state of charge.",
+          "max_room_temperature": "Physical room temperature that corresponds to 100% state of charge.",
           "max_comfort_temperature": "Kairos will keep the temperature between this maximum and as a minimum the default temperature above. It defines how much the building can be \"charged\".",
           "heating_rate": "Indoor temperature rise per hour measured while the heat pump runs in +dT (charge) mode. The heat pump can run in one of 3 modes: charge mode (+dT), discharge mode (-dT), and neutral mode. This empirically determined parameter defines how quickly the building thermal mass can be charged in +dT (charge) mode.",
           "cooldown_rate": "Indoor temperature drop per hour measured while the heat pump runs in -dT (discharge) mode."

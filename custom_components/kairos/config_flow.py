@@ -75,7 +75,8 @@ _STATIC_FIELDS: dict[str, float] = {
     "evening_peak_energy_demand": 180,
     "floor_area": 100,
     "thermal_mass_coefficient": 200,
-    "default_weather_compensation_temperature": 20,
+    "min_room_temperature": 15,
+    "max_room_temperature": 23,
     "max_comfort_temperature": 21,
     "heating_rate": 0.6,
     "cooldown_rate": 0.1,
@@ -83,6 +84,9 @@ _STATIC_FIELDS: dict[str, float] = {
     "heat_pump_cop_default": 3,
     "vehicle_efficiency": 5.0,
     "round_trip_distance": 100,
+}
+_ASSET_DEFAULTS: dict[str, dict[str, float]] = {
+    "building_thermal_mass": {"min_comfort_temperature": 15},
 }
 
 _BOUNDED_FIELDS = {
@@ -95,7 +99,8 @@ _TEMPERATURE_FIELDS = {
     "min_water_temperature",
     "max_water_temperature",
     "min_comfort_temperature",
-    "default_weather_compensation_temperature",
+    "min_room_temperature",
+    "max_room_temperature",
     "max_comfort_temperature",
 }
 
@@ -151,7 +156,9 @@ _ASSET_STATIC_FIELDS: dict[str, tuple[str, ...]] = {
     "building_thermal_mass": (
         "floor_area",
         "thermal_mass_coefficient",
-        "default_weather_compensation_temperature",
+        "min_room_temperature",
+        "max_room_temperature",
+        "min_comfort_temperature",
         "max_comfort_temperature",
         "heating_rate",
         "cooldown_rate",
@@ -206,6 +213,7 @@ def _asset_schema(
 ) -> vol.Schema:
     """Build the asset form schema for setup and later asset management."""
     defaults = defaults or {}
+    static_defaults = {**_STATIC_FIELDS, **_ASSET_DEFAULTS.get(asset_type, {})}
 
     def required(key: str) -> vol.Required:
         if key in defaults:
@@ -257,7 +265,7 @@ def _asset_schema(
                     mode=selector.NumberSelectorMode.BOX,
                 )
             )
-        fields[vol.Required(key, default=defaults.get(key, _STATIC_FIELDS[key]))] = (
+        fields[vol.Required(key, default=defaults.get(key, static_defaults[key]))] = (
             number_selector
         )
 

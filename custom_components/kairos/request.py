@@ -401,13 +401,13 @@ async def build_request(
                     "storage_type": kind,
                     "floor_area": asset.get("floor_area"),
                     "thermal_mass_coefficient": asset.get("thermal_mass_coefficient"),
-                    "default_weather_compensation_temperature": asset.get(
-                        "default_weather_compensation_temperature"
-                    ),
+                    "min_room_temperature": asset.get("min_room_temperature"),
+                    "max_room_temperature": asset.get("max_room_temperature"),
                     "current_indoor_temperature": _temperature(
                         hass,
                         asset.get("indoor_temperature_entity"),
                     ),
+                    "min_comfort_temperature": asset.get("min_comfort_temperature"),
                     "max_comfort_temperature": asset.get("max_comfort_temperature"),
                     "heating_rate": asset.get("heating_rate"),
                     "cooldown_rate": asset.get("cooldown_rate"),
