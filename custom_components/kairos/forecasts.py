@@ -62,8 +62,11 @@ async def async_forecast_base_load(
         daily_slot_values[(local_time.date(), local_time.weekday(), slot)].append(watts)
 
     weekly_slot_averages: dict[tuple[int, int], list[float]] = defaultdict(list)
-    for (_, weekday, slot), values in daily_slot_values.items():
+    previous_day_slot_averages: dict[int, tuple[date, float]] = {}
+    for (day, weekday, slot), values in daily_slot_values.items():
         weekly_slot_averages[(weekday, slot)].append(fmean(values))
+        if slot not in previous_day_slot_averages or day > previous_day_slot_averages[slot][0]:
+            previous_day_slot_averages[slot] = (day, fmean(values))
 
     start_utc = dt_util.as_utc(start_time)
     forecast: list[float | None] = []
@@ -73,5 +76,10 @@ async def async_forecast_base_load(
         )
         slot = (target.hour * 60 + target.minute) // step_minutes
         readings = weekly_slot_averages.get((target.weekday(), slot))
-        forecast.append(fmean(readings) if readings else current_power)
+        if readings:
+            forecast.append(fmean(readings))
+        elif slot in previous_day_slot_averages:
+            forecast.append(previous_day_slot_averages[slot][1])
+        else:
+            forecast.append(current_power)
     return forecast
