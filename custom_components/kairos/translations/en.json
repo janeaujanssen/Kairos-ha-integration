@@ -143,7 +143,8 @@
           "thermal_mass_coefficient": "Heat storage capacity of the building per m² of floor area. This does not need be an exact number, the default is generally fine.",
           "min_room_temperature": "Physical room temperature that corresponds to 0% state of charge.",
           "max_room_temperature": "Physical room temperature that corresponds to 100% state of charge.",
-          "max_comfort_temperature": "Kairos will keep the temperature between this maximum and as a minimum the default temperature above. It defines how much the building can be \"charged\".",
+          "min_comfort_temperature": "Soft lower comfort bound. Dropping below it incurs a penalty. It should be set low enough below the normal indoor temperature to allow for some variation in temperature during normal heat pump operation.",
+          "max_comfort_temperature": "Soft upper comfort bound. Exceeding it incurs a penalty. It should be set high enough above the normal indoor temperature to allow for some variation in temperature during normal heat pump operation.",
           "heating_rate": "Indoor temperature rise per hour measured while the heat pump runs in +dT (charge) mode. The heat pump can run in one of 3 modes: charge mode (+dT), discharge mode (-dT), and neutral mode. This empirically determined parameter defines how quickly the building thermal mass can be charged in +dT (charge) mode.",
           "cooldown_rate": "Indoor temperature drop per hour measured while the heat pump runs in -dT (discharge) mode."
         }
@@ -214,7 +215,8 @@
           "thermal_mass_coefficient": "Heat storage capacity of the building per m² of floor area. This does not need be an exact number, the default is generally fine.",
           "min_room_temperature": "Physical room temperature that corresponds to 0% state of charge.",
           "max_room_temperature": "Physical room temperature that corresponds to 100% state of charge.",
-          "max_comfort_temperature": "Kairos will keep the temperature between this maximum and as a minimum the default temperature above. It defines how much the building can be \"charged\".",
+          "min_comfort_temperature": "Soft lower comfort bound. Dropping below it incurs a penalty. It should be set low enough below the normal indoor temperature to allow for some variation in temperature during normal heat pump operation.",
+          "max_comfort_temperature": "Soft upper comfort bound. Exceeding it incurs a penalty. It should be set high enough above the normal indoor temperature to allow for some variation in temperature during normal heat pump operation.",
           "heating_rate": "Indoor temperature rise per hour measured while the heat pump runs in +dT (charge) mode. The heat pump can run in one of 3 modes: charge mode (+dT), discharge mode (-dT), and neutral mode. This empirically determined parameter defines how quickly the building thermal mass can be charged in +dT (charge) mode.",
           "cooldown_rate": "Indoor temperature drop per hour measured while the heat pump runs in -dT (discharge) mode."
         }

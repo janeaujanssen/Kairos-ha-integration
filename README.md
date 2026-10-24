@@ -155,8 +155,8 @@ The household base-load forecast is generated automatically by averaging recorde
 | Thermal mass coefficient [Wh/m²/°C] | Parameter | Heat storage capacity of the building per m² of floor area. This does not need be an exact number, the default is generally fine. |
 | Min room temperature [°C] | Parameter | Physical room temperature that corresponds to 0% state of charge. |
 | Max room temperature [°C] | Parameter | Physical room temperature that corresponds to 100% state of charge. |
-| Minimum comfort temperature [°C] | Parameter | Soft lower comfort bound. Dropping below it incurs a penalty. Default 15. |
-| Maximum comfort temperature [°C] | Parameter | Kairos will keep the temperature between this maximum and as a minimum the default temperature above. It defines how much the building can be "charged". |
+| Minimum comfort temperature [°C] | Parameter | Soft lower comfort bound. Dropping below it incurs a penalty. It should be set low enough below the normal indoor temperature to allow for some variation in temperature during normal heat pump operation. |
+| Maximum comfort temperature [°C] | Parameter | Soft upper comfort bound. Exceeding it incurs a penalty. It should be set high enough above the normal indoor temperature to allow for some variation in temperature during normal heat pump operation. |
 | Heating rate (+dT) [°C/h] | Parameter | Indoor temperature rise per hour measured while the heat pump runs in +dT (charge) mode. The heat pump can run in one of 3 modes: charge mode (+dT), discharge mode (-dT), and neutral mode. This empirically determined parameter defines how quickly the building thermal mass can be charged in +dT (charge) mode.  |
 | Cooldown rate (-dT) [°C/h] | Parameter | Indoor temperature drop per hour measured while the heat pump runs in -dT (discharge) mode. |
 | Heat pump COP in charge mode | Parameter | |
