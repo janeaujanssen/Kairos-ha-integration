@@ -3,7 +3,7 @@
 from homeassistant.const import Platform
 
 DOMAIN = "kairos"
-PLATFORMS = [Platform.SENSOR]
+PLATFORMS = [Platform.BUTTON, Platform.SENSOR]
 
 CONF_API_URL = "api_url"
 CONF_TIME_STEP_MINUTES = "time_step_minutes"

@@ -188,6 +188,19 @@ def _entity_selector() -> selector.EntitySelector:
     return selector.EntitySelector(selector.EntitySelectorConfig())
 
 
+def _asset_radio_selector(choices: dict[str, str]) -> selector.SelectSelector:
+    """Render asset choices as radio buttons."""
+    return selector.SelectSelector(
+        selector.SelectSelectorConfig(
+            options=[
+                selector.SelectOptionDict(value=value, label=label)
+                for value, label in choices.items()
+            ],
+            mode=selector.SelectSelectorMode.LIST,
+        )
+    )
+
+
 def _asset_schema(
     asset_type: str, defaults: dict[str, Any] | None = None
 ) -> vol.Schema:
@@ -491,7 +504,9 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
         labels = {asset_type: _ASSET_LABELS[asset_type] for asset_type in ASSET_TYPES}
         return self.async_show_form(
             step_id="add_asset",
-            data_schema=vol.Schema({vol.Required("asset_type"): vol.In(labels)}),
+            data_schema=vol.Schema(
+                {vol.Required("asset_type"): _asset_radio_selector(labels)}
+            ),
         )
 
     async def async_step_add_asset_config(
@@ -560,7 +575,7 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
             step_id="edit_asset",
             data_schema=vol.Schema(
                 {
-                    vol.Required("asset_id"): vol.In(
+                    vol.Required("asset_id"): _asset_radio_selector(
                         {item["id"]: item["name"] for item in assets}
                     )
                 }
@@ -644,7 +659,7 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
             step_id="remove_asset",
             data_schema=vol.Schema(
                 {
-                    vol.Required("asset_id"): vol.In(
+                    vol.Required("asset_id"): _asset_radio_selector(
                         {item["id"]: item["name"] for item in assets}
                     )
                 }
