@@ -7,7 +7,6 @@ from datetime import datetime
 import hashlib
 import json
 import logging
-from time import monotonic
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -24,23 +23,10 @@ from .const import (
     CONF_API_URL,
     CONF_ASSETS,
     CONF_FAILURE_THRESHOLD,
-    CONF_GRID_PEAK_PENALTY,
-    CONF_HORIZON_HOURS,
     CONF_OPTIMIZATION_STEPS,
-    CONF_RELATIVE_MIP_GAP,
     CONF_REQUEST_TIMEOUT,
-    CONF_SWITCHING_PENALTY,
     CONF_TIME_STEP_MINUTES,
-    CONF_TIME_LIMIT_S,
-    DEFAULT_FAILURE_THRESHOLD,
-    DEFAULT_GRID_PEAK_PENALTY,
-    DEFAULT_HORIZON_HOURS,
-    DEFAULT_OPTIMIZATION_STEPS,
-    DEFAULT_RELATIVE_MIP_GAP,
-    DEFAULT_REQUEST_TIMEOUT,
-    DEFAULT_SWITCHING_PENALTY,
-    DEFAULT_TIME_STEP_MINUTES,
-    DEFAULT_TIME_LIMIT_S,
+    DEFAULT_SETTINGS,
     DOMAIN,
 )
 from .request import build_request
@@ -54,15 +40,15 @@ class KairosCoordinator:
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
         self.entry = entry
-        self.config = {**entry.data, **entry.options}
+        self.config = {**DEFAULT_SETTINGS, **entry.data, **entry.options}
         self.assets = self.config[CONF_ASSETS]
+        # Values of the entities created by Kairos, keyed by (asset id, input key).
+        self.inputs: dict[tuple[str, str], Any] = {}
         self._store: Store[dict[str, Any]] = Store(
             hass, 1, f"{DOMAIN}_{entry.entry_id}_schedule"
         )
         self._failures = 0
         self._last_run: str | None = None
-        self._duration: float | None = None
-        self._status = "error"
         self._objective_cost: float | None = None
         self._last_api_request: dict[str, Any] | None = None
         self._last_api_response: Any = None
@@ -76,7 +62,7 @@ class KairosCoordinator:
         self.api = KairosApi(
             async_get_clientsession(hass),
             self.config[CONF_API_URL],
-            self.config.get(CONF_REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT),
+            self.config[CONF_REQUEST_TIMEOUT],
         )
         self.coordinator = DataUpdateCoordinator(
             hass,
@@ -86,17 +72,17 @@ class KairosCoordinator:
         )
 
     async def async_setup(self) -> None:
-        """Restore the last schedule and run an initial optimization."""
+        """Restore the last schedule."""
         saved = await self._store.async_load()
         if saved:
             self._schedules = saved.get("assets", {})
             self._last_run = saved.get("optimized_at")
             self._objective_cost = saved.get("objective_cost")
-            self._status = saved.get("status", "error")
         self.coordinator.data = self._sensor_data()
+
+    async def async_start(self) -> None:
+        """Run the initial optimization, once the input entities have restored their values."""
         if not self._configuration_ready():
-            self._status = "not_configured"
-            self.coordinator.data = self._sensor_data()
             return
         await self.coordinator.async_refresh()
         self._schedule_next_tick()
@@ -123,9 +109,7 @@ class KairosCoordinator:
 
     def _schedule_next_tick(self) -> None:
         """Schedule the next refresh just after an aligned optimization boundary."""
-        interval_seconds = (
-            self.config.get(CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES) * 60
-        )
+        interval_seconds = self.config[CONF_TIME_STEP_MINUTES] * 60
         now = dt_util.utcnow()
         next_epoch = (
             (int(now.timestamp()) // interval_seconds + 1) * interval_seconds + 1
@@ -137,11 +121,9 @@ class KairosCoordinator:
 
     def _claim_optimization_slot(self) -> bool:
         """Return whether the current time slot starts an optimization run."""
-        step_seconds = (
-            self.config.get(CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES) * 60
-        )
+        step_seconds = self.config[CONF_TIME_STEP_MINUTES] * 60
         slot = int(dt_util.utcnow().timestamp()) // step_seconds
-        every = int(self.config.get(CONF_OPTIMIZATION_STEPS, DEFAULT_OPTIMIZATION_STEPS))
+        every = int(self.config[CONF_OPTIMIZATION_STEPS])
         due = (
             self._force_update
             or self._last_optimized_slot is None
@@ -161,11 +143,8 @@ class KairosCoordinator:
     def _sensor_data(self) -> dict[str, Any]:
         return {
             "assets": self._schedules,
-            "status": self._status,
             "objective_cost": self._objective_cost,
             "last_run": self._last_run,
-            "duration": self._duration,
-            "consecutive_failures": self._failures,
             "last_api_request": self._last_api_request,
             "last_api_response": self._last_api_response,
             "last_api_status": self._last_api_status,
@@ -174,37 +153,17 @@ class KairosCoordinator:
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Build and submit one snapshot, retaining schedules on failure."""
-        started = monotonic()
         if not self._claim_optimization_slot():
             return self._sensor_data()
-        self._last_run = dt_util.now().isoformat()
         self._last_api_request = None
         self._last_api_response = None
         self._last_api_status = None
         self._last_error = None
         payload: dict[str, Any] | None = None
         try:
-            settings = {
-                "time_step_minutes": self.config.get(
-                    CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES
-                ),
-                "horizon_hours": self.config.get(
-                    CONF_HORIZON_HOURS, DEFAULT_HORIZON_HOURS
-                ),
-                CONF_TIME_LIMIT_S: self.config.get(
-                    CONF_TIME_LIMIT_S, DEFAULT_TIME_LIMIT_S
-                ),
-                CONF_RELATIVE_MIP_GAP: self.config.get(
-                    CONF_RELATIVE_MIP_GAP, DEFAULT_RELATIVE_MIP_GAP
-                ),
-                CONF_SWITCHING_PENALTY: self.config.get(
-                    CONF_SWITCHING_PENALTY, DEFAULT_SWITCHING_PENALTY
-                ),
-                CONF_GRID_PEAK_PENALTY: self.config.get(
-                    CONF_GRID_PEAK_PENALTY, DEFAULT_GRID_PEAK_PENALTY
-                ),
-            }
-            payload = await build_request(self.hass, settings, self.assets)
+            payload = await build_request(
+                self.hass, self.config, self.assets, self.inputs
+            )
             fingerprint = _payload_fingerprint(payload)
             if (
                 fingerprint == self._rejected_payload_fingerprint
@@ -214,43 +173,32 @@ class KairosCoordinator:
             self._last_api_request = payload
             result = await self.api.async_optimize(payload)
             self._last_api_response = result
-            self._duration = monotonic() - started
-            self._last_run = payload["timestamp"]
 
             status = result.get("status")
             if status in ("Optimal", "Feasible"):
                 self._schedules = result["assets"]
-                self._status = status.casefold()
+                self._last_run = payload["timestamp"]
                 self._objective_cost = result.get("objective_cost")
                 self._failures = 0
                 await self._persist()
                 ir.async_delete_issue(self.hass, DOMAIN, "optimization_failed")
             elif status == "Infeasible":
-                self._status = "infeasible"
-                self._objective_cost = result.get("objective_cost")
                 self._failures += 1
                 _LOGGER.error("Kairos returned an infeasible schedule.")
                 self._report_failure("Optimizer returned an infeasible schedule.")
-                await self._persist()
             else:
                 raise KairosApiError(
                     f"Kairos returned unsupported status {status!r}.",
                     response=result,
                 )
-        except KairosApiError as err:
-            self._duration = monotonic() - started
-            self._status = "error"
+        except (KairosApiError, ValueError) as err:
             self._failures += 1
             self._last_error = str(err)
             if isinstance(err, KairosApiError):
                 self._last_api_status = err.status_code
                 self._last_api_response = err.response
-            if (
-                isinstance(err, KairosApiError)
-                and err.status_code == 400
-                and payload is not None
-            ):
-                self._rejected_payload_fingerprint = _payload_fingerprint(payload)
+                if err.status_code == 400 and payload is not None:
+                    self._rejected_payload_fingerprint = _payload_fingerprint(payload)
             _LOGGER.error("Kairos optimization failed: %s", err)
             self._report_failure(str(err))
         return self._sensor_data()
@@ -261,15 +209,11 @@ class KairosCoordinator:
                 "assets": self._schedules,
                 "optimized_at": self._last_run,
                 "objective_cost": self._objective_cost,
-                "status": self._status,
             }
         )
 
     def _report_failure(self, detail: str) -> None:
-        threshold = self.config.get(
-            CONF_FAILURE_THRESHOLD, DEFAULT_FAILURE_THRESHOLD
-        )
-        if self._failures >= threshold:
+        if self._failures >= self.config[CONF_FAILURE_THRESHOLD]:
             ir.async_create_issue(
                 self.hass,
                 DOMAIN,

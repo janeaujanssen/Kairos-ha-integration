@@ -79,29 +79,33 @@ _STATIC_FIELDS: dict[str, float] = {
     "max_room_temperature": 23,
     "max_comfort_temperature": 21,
     "heating_rate": 0.6,
-    "cooldown_rate": 0.1,
-    "heat_pump_cop_charge": 2.5,
-    "heat_pump_cop_default": 3,
+    "plus_dt_flow_offset": 5,
+    "cooldown_rate": -0.1,
+    "minus_dt_flow_offset": -5,
+    "cop_flow_temperature_sensitivity": -0.02,
     "vehicle_efficiency": 5.0,
-    "round_trip_distance": 100,
 }
 _ASSET_DEFAULTS: dict[str, dict[str, float]] = {
-    "building_thermal_mass": {"min_comfort_temperature": 15},
+    "building_thermal_mass": {"min_comfort_temperature": 15, "heat_loss_coefficient": 0},
 }
 
-_BOUNDED_FIELDS = {
+# (min, max) of number fields; None means unbounded.
+_DEFAULT_BOUNDS = (0, None)
+_NUMBER_BOUNDS: dict[str, tuple[float | None, float | None]] = {
     "min_soc": (0, 1),
     "max_soc": (0, 1),
     "charge_efficiency": (0, 1),
     "discharge_efficiency": (0, 1),
-}
-_TEMPERATURE_FIELDS = {
-    "min_water_temperature",
-    "max_water_temperature",
-    "min_comfort_temperature",
-    "min_room_temperature",
-    "max_room_temperature",
-    "max_comfort_temperature",
+    "min_water_temperature": (-50, None),
+    "max_water_temperature": (-50, None),
+    "min_comfort_temperature": (-50, None),
+    "min_room_temperature": (-50, None),
+    "max_room_temperature": (-50, None),
+    "max_comfort_temperature": (-50, None),
+    "cooldown_rate": (None, 0),
+    "plus_dt_flow_offset": (None, None),
+    "minus_dt_flow_offset": (None, None),
+    "cop_flow_temperature_sensitivity": (None, None),
 }
 
 _ASSET_ENTITY_FIELDS: dict[str, tuple[str, ...]] = {
@@ -112,7 +116,12 @@ _ASSET_ENTITY_FIELDS: dict[str, tuple[str, ...]] = {
     "home_battery": ("soc_entity",),
     "ev_battery": ("soc_entity",),
     "dhw_tank": ("water_temperature_entity",),
-    "building_thermal_mass": ("indoor_temperature_entity",),
+    "building_thermal_mass": (
+        "indoor_temperature_entity",
+        "outdoor_temperature_entity",
+        "electric_power_entity",
+        "thermal_power_entity",
+    ),
 }
 
 _ASSET_STATIC_FIELDS: dict[str, tuple[str, ...]] = {
@@ -140,7 +149,6 @@ _ASSET_STATIC_FIELDS: dict[str, tuple[str, ...]] = {
         "discharge_efficiency",
         "passive_discharge_power",
         "vehicle_efficiency",
-        "round_trip_distance",
     ),
     "dhw_tank": (
         "tank_volume",
@@ -154,35 +162,31 @@ _ASSET_STATIC_FIELDS: dict[str, tuple[str, ...]] = {
         "evening_peak_energy_demand",
     ),
     "building_thermal_mass": (
-        "floor_area",
-        "thermal_mass_coefficient",
         "min_room_temperature",
         "max_room_temperature",
         "min_comfort_temperature",
         "max_comfort_temperature",
+        "heat_loss_coefficient",
+        "floor_area",
+        "thermal_mass_coefficient",
         "heating_rate",
+        "plus_dt_flow_offset",
         "cooldown_rate",
-        "heat_pump_cop_charge",
-        "heat_pump_cop_default",
+        "minus_dt_flow_offset",
+        "cop_flow_temperature_sensitivity",
     ),
 }
 
+_ASSET_TIME_FIELDS: dict[str, tuple[tuple[str, str], ...]] = {
+    "dhw_tank": (("morning_peak_time", "07:00"), ("evening_peak_time", "19:00")),
+}
 
 _ENTITY_ATTRIBUTE_FIELDS: dict[str, str] = {
     "import_price_entity": "import_price_forecast_attribute",
     "export_price_entity": "export_price_forecast_attribute",
     "power_forecast_entity": "power_forecast_attribute",
+    "outdoor_temperature_entity": "outdoor_temperature_forecast_attribute",
 }
-
-# Assets with their own field labels get a dedicated form step.
-_LABELED_ASSET_STEPS = ("grid", "pv", "base_load")
-
-
-def _config_step_id(prefix: str, asset_type: str) -> str:
-    """Return the form step id for an asset type."""
-    if asset_type in _LABELED_ASSET_STEPS:
-        return f"{prefix}_{asset_type}"
-    return prefix
 
 
 def _slugify(value: str) -> str:
@@ -229,62 +233,24 @@ def _asset_schema(
             fields[vol.Required(attribute, default=defaults.get(attribute, attribute_default))] = (
                 selector.TextSelector()
             )
-    if asset_type == "controllable_load":
-        run_started_key = (
-            vol.Optional("run_started_at", default=defaults["run_started_at"])
-            if "run_started_at" in defaults
-            else vol.Optional("run_started_at")
-        )
-        fields[run_started_key] = _entity_selector()
-    if asset_type == "controllable_load":
-        fields[required("earliest_start_time")] = selector.TimeSelector()
-        fields[required("latest_finish_time")] = selector.TimeSelector()
     for key in _ASSET_STATIC_FIELDS[asset_type]:
-        bounds = _BOUNDED_FIELDS.get(key)
-        minimum = (
-            bounds[0]
-            if bounds
-            else -50
-            if key in _TEMPERATURE_FIELDS
-            else 0
-        )
-        if bounds:
-            number_selector = selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=minimum,
-                    max=bounds[1],
-                    step=0.01,
-                    mode=selector.NumberSelectorMode.BOX,
-                )
-            )
-        else:
-            number_selector = selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=minimum,
-                    step=0.01,
-                    mode=selector.NumberSelectorMode.BOX,
-                )
-            )
+        minimum, maximum = _NUMBER_BOUNDS.get(key, _DEFAULT_BOUNDS)
+        number_config: dict[str, Any] = {
+            "step": 0.01,
+            "mode": selector.NumberSelectorMode.BOX,
+        }
+        if minimum is not None:
+            number_config["min"] = minimum
+        if maximum is not None:
+            number_config["max"] = maximum
         fields[vol.Required(key, default=defaults.get(key, static_defaults[key]))] = (
-            number_selector
+            selector.NumberSelector(selector.NumberSelectorConfig(**number_config))
         )
 
-    if asset_type == "ev_battery":
-        for key, default in (
-            ("expected_departure_time", "09:00"),
-            ("expected_arrival_time", "18:00"),
-        ):
-            fields[vol.Required(key, default=defaults.get(key, default))] = (
-                selector.TextSelector()
-            )
-    if asset_type == "dhw_tank":
-        for key, default in (
-            ("morning_peak_time", "07:00"),
-            ("evening_peak_time", "19:00"),
-        ):
-            fields[vol.Required(key, default=defaults.get(key, default))] = (
-                selector.TextSelector()
-            )
+    for key, default in _ASSET_TIME_FIELDS.get(asset_type, ()):
+        fields[vol.Required(key, default=defaults.get(key, default))] = (
+            selector.TimeSelector()
+        )
     return vol.Schema(fields)
 
 
@@ -317,7 +283,7 @@ async def _check_api(hass: HomeAssistant, api_url: str, timeout: int) -> None:
 class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Set up the Kairos API connection and optimization settings."""
 
-    VERSION = 2
+    VERSION = 3
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -393,7 +359,7 @@ class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_REQUEST_TIMEOUT, default=DEFAULT_REQUEST_TIMEOUT
                 ): selector.NumberSelector(
                     selector.NumberSelectorConfig(
-                        min=1, max=3601, step=1, mode=selector.NumberSelectorMode.BOX
+                        min=1, max=3600, step=1, mode=selector.NumberSelectorMode.BOX
                     )
                 ),
                 vol.Required(
@@ -508,7 +474,7 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
         """Select a new asset type."""
         if user_input is not None:
             self._asset_type = user_input["asset_type"]
-            return await self._async_add_asset_config()
+            return await self._async_asset_config()
         labels = {asset_type: _ASSET_LABELS[asset_type] for asset_type in ASSET_TYPES}
         return self.async_show_form(
             step_id="add_asset",
@@ -517,53 +483,44 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
             ),
         )
 
-    async def async_step_add_asset_config(
+    async def _async_asset_config(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
-        """Configure and save a new asset."""
-        return await self._async_add_asset_config(user_input)
+        """Validate and save a new or edited asset, or show its form.
 
-    async def async_step_add_asset_config_grid(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
-        """Configure a grid asset."""
-        return await self._async_add_asset_config(user_input)
-
-    async def async_step_add_asset_config_pv(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
-        """Configure a solar asset."""
-        return await self._async_add_asset_config(user_input)
-
-    async def async_step_add_asset_config_base_load(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
-        """Configure a base load asset."""
-        return await self._async_add_asset_config(user_input)
-
-    async def _async_add_asset_config(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
-        """Validate and save a new asset, or show its form."""
+        An edited asset keeps its API identifier so entities and history stay linked.
+        """
         assert self._asset_type is not None
+        assets = self._assets()
+        original = next((item for item in assets if item["id"] == self._editing_id), {})
         errors: dict[str, str] = {}
         if user_input is not None:
-            asset = {**user_input, "asset_type": self._asset_type}
-            asset["id"] = _slugify(asset["name"])
-            assets = self._assets()
-            if any(item["id"] == asset["id"] for item in assets):
+            asset = {**original, **user_input, "asset_type": self._asset_type}
+            asset["id"] = self._editing_id or _slugify(asset["name"])
+            if any(
+                _slugify(item["name"]) == _slugify(asset["name"])
+                for item in assets
+                if item["id"] != self._editing_id
+            ):
                 errors["base"] = "duplicate_asset_name"
             elif (
-                self._asset_type in ("grid", "base_load")
+                self._editing_id is None
+                and self._asset_type in ("grid", "base_load")
                 and any(item["asset_type"] == self._asset_type for item in assets)
             ):
                 errors["base"] = "duplicate_required_asset"
             else:
-                assets.append(asset)
+                if self._editing_id is None:
+                    assets.append(asset)
+                else:
+                    assets = [
+                        asset if item["id"] == self._editing_id else item
+                        for item in assets
+                    ]
                 return self._save_assets(assets)
         return self.async_show_form(
-            step_id=_config_step_id("add_asset_config", self._asset_type),
-            data_schema=_asset_schema(self._asset_type),
+            step_id=f"asset_{self._asset_type}",
+            data_schema=_asset_schema(self._asset_type, original),
             errors=errors,
             description_placeholders={"asset_type": _ASSET_LABELS[self._asset_type]},
         )
@@ -578,7 +535,7 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
             self._asset_type = next(
                 item["asset_type"] for item in assets if item["id"] == self._editing_id
             )
-            return await self._async_edit_asset_config()
+            return await self._async_asset_config()
         return self.async_show_form(
             step_id="edit_asset",
             data_schema=vol.Schema(
@@ -588,63 +545,6 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
                     )
                 }
             ),
-        )
-
-    async def async_step_edit_asset_config(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
-        """Save edits to a generic asset."""
-        return await self._async_edit_asset_config(user_input)
-
-    async def async_step_edit_asset_config_grid(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
-        """Save edits to a grid asset."""
-        return await self._async_edit_asset_config(user_input)
-
-    async def async_step_edit_asset_config_pv(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
-        """Save edits to a solar asset."""
-        return await self._async_edit_asset_config(user_input)
-
-    async def async_step_edit_asset_config_base_load(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
-        """Save edits to a base load asset."""
-        return await self._async_edit_asset_config(user_input)
-
-    async def _async_edit_asset_config(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
-        """Save edits while retaining the asset's stable API identifier."""
-        assert self._asset_type is not None
-        assert self._editing_id is not None
-        assets = self._assets()
-        original = next(item for item in assets if item["id"] == self._editing_id)
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            updated = {**original, **user_input, "id": self._editing_id}
-            if self._asset_type == "base_load":
-                updated.pop("power_forecast_attribute", None)
-                updated.pop("power_forecast_entity", None)
-            if any(
-                item["id"] != self._editing_id
-                and _slugify(item["name"]) == _slugify(updated["name"])
-                for item in assets
-            ):
-                errors["base"] = "duplicate_asset_name"
-            else:
-                assets = [
-                    updated if item["id"] == self._editing_id else item
-                    for item in assets
-                ]
-                return self._save_assets(assets)
-        return self.async_show_form(
-            step_id=_config_step_id("edit_asset_config", self._asset_type),
-            data_schema=_asset_schema(self._asset_type, original),
-            errors=errors,
-            description_placeholders={"asset_type": _ASSET_LABELS[self._asset_type]},
         )
 
     async def async_step_remove_asset(
@@ -724,7 +624,7 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
                     default=settings.get(CONF_REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT),
                 ): selector.NumberSelector(
                     selector.NumberSelectorConfig(
-                            min=1, max=3601, step=1, mode=selector.NumberSelectorMode.BOX
+                        min=1, max=3600, step=1, mode=selector.NumberSelectorMode.BOX
                     )
                 ),
                 vol.Required(
@@ -775,3 +675,15 @@ class KairosOptionsFlow(config_entries.OptionsFlow):
                 ),
             }
         )
+
+
+async def _async_step_asset(
+    self: KairosOptionsFlow, user_input: dict[str, Any] | None = None
+) -> config_entries.FlowResult:
+    """Form step of the asset being added or edited."""
+    return await self._async_asset_config(user_input)
+
+
+# One form step per asset type, so each gets its own field labels and descriptions.
+for _asset_type in ASSET_TYPES:
+    setattr(KairosOptionsFlow, f"async_step_asset_{_asset_type}", _async_step_asset)

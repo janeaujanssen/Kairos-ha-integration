@@ -4,14 +4,15 @@ from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.helpers import entity_registry as er
 
 from .const import CONF_ASSETS, DOMAIN, PLATFORMS
 from .coordinator import KairosCoordinator
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate asset inputs to match the Kairos app's names and units."""
-    if entry.version > 1:
+    """Migrate asset inputs to match the data flow architecture."""
+    if entry.version > 3:
         return False
 
     data = {**entry.data}
@@ -23,22 +24,38 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         migrated_assets = []
         for asset in assets:
             migrated = {**asset}
-            if migrated.get("asset_type") == "controllable_load":
-                energy_demand = migrated.pop("energy_demand", None)
-                if energy_demand is not None:
-                    average_power = migrated.get("average_power", 0)
-                    migrated["runtime_h"] = (
-                        energy_demand / average_power if average_power else 0
-                    )
-            if migrated.get("asset_type") == "ev_battery":
-                efficiency = migrated.get("vehicle_efficiency")
-                if efficiency is not None:
-                    migrated["vehicle_efficiency"] = efficiency * 1000
+            kind = migrated.get("asset_type")
+            if entry.version < 2:
+                if kind == "controllable_load":
+                    energy_demand = migrated.pop("energy_demand", None)
+                    if energy_demand is not None:
+                        average_power = migrated.get("average_power", 0)
+                        migrated["runtime_h"] = (
+                            energy_demand / average_power if average_power else 0
+                        )
+                if kind == "ev_battery" and "vehicle_efficiency" in migrated:
+                    migrated["vehicle_efficiency"] *= 1000
+            if entry.version < 3:
+                # Times and distances are now entities; the stored values seed them.
+                if kind == "building_thermal_mass":
+                    migrated.pop("heat_pump_cop_charge", None)
+                    migrated.pop("heat_pump_cop_default", None)
+                    migrated.setdefault("heat_loss_coefficient", 0)
+                    migrated["cooldown_rate"] = -abs(migrated.get("cooldown_rate", 0.1))
+                migrated.pop("run_started_at", None)
             migrated_assets.append(migrated)
         settings[CONF_ASSETS] = migrated_assets
 
+    if entry.version < 3:
+        registry = er.async_get(hass)
+        for suffix in ("status", "base_load_forecast"):
+            if entity_id := registry.async_get_entity_id(
+                "sensor", DOMAIN, f"{entry.entry_id}_{suffix}"
+            ):
+                registry.async_remove(entity_id)
+
     hass.config_entries.async_update_entry(
-        entry, data=data, options=options, version=2
+        entry, data=data, options=options, version=3
     )
     return True
 
@@ -50,6 +67,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await coordinator.async_start()
 
     async def handle_run_optimization(call: ServiceCall) -> None:
         """Run an optimization immediately."""

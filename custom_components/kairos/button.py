@@ -7,10 +7,10 @@ from typing import Any
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN
 from .coordinator import KairosCoordinator
+from .entity import system_device_info
 
 
 async def async_setup_entry(
@@ -32,12 +32,7 @@ class KairosRunOptimizationButton(ButtonEntity):
     def __init__(self, runtime: KairosCoordinator, entry: ConfigEntry) -> None:
         self.runtime = runtime
         self._attr_unique_id = f"{entry.entry_id}_run_optimization"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{entry.entry_id}_system")},
-            name="Kairos",
-            manufacturer="Kairos",
-            configuration_url=runtime.config["api_url"],
-        )
+        self._attr_device_info = system_device_info(entry, runtime)
 
     async def async_press(self) -> None:
         """Run an optimization immediately."""

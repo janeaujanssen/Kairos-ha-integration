@@ -10,12 +10,30 @@ from homeassistant.core import HomeAssistant, State
 from homeassistant.util import dt as dt_util
 
 from .const import (
-    DEFAULT_GRID_PEAK_PENALTY,
-    DEFAULT_RELATIVE_MIP_GAP,
-    DEFAULT_SWITCHING_PENALTY,
-    DEFAULT_TIME_LIMIT_S,
+    CONF_GRID_PEAK_PENALTY,
+    CONF_HORIZON_HOURS,
+    CONF_RELATIVE_MIP_GAP,
+    CONF_SWITCHING_PENALTY,
+    CONF_TIME_LIMIT_S,
+    CONF_TIME_STEP_MINUTES,
+    ENABLEABLE_ASSET_TYPES,
 )
-from .forecasts import async_forecast_base_load
+from .forecasts import async_forecast_base_load, history_power
+from .thermal import async_derive_thermal_model
+
+_TIME_KEYS = ("time", "datetime", "period_start", "start_time", "timestamp", "date")
+_VALUE_KEYS = (
+    "value",
+    "power",
+    "price",
+    "forecast_value",
+    "pv_estimate",
+    "estimate",
+    "watts",
+    "consumption",
+    "temperature",
+)
+_PRICE_PER_KWH_TO_PER_WH = 1 / 1000
 
 
 def _state(hass: HomeAssistant, entity_id: str | None) -> State | None:
@@ -37,16 +55,6 @@ def _number(state: State | None) -> float | None:
     return value if math.isfinite(value) else None
 
 
-def _power(hass: HomeAssistant, entity_id: str | None) -> float | None:
-    state = _state(hass, entity_id)
-    value = _number(state)
-    unit = state.attributes.get("unit_of_measurement") if state is not None else None
-    multipliers = {"W": 1, "kW": 1000, "MW": 1_000_000}
-    if value is None or unit not in multipliers:
-        return None
-    return value * multipliers[unit]
-
-
 def _temperature(hass: HomeAssistant, entity_id: str | None) -> float | None:
     state = _state(hass, entity_id)
     value = _number(state)
@@ -65,8 +73,7 @@ def _soc(hass: HomeAssistant, entity_id: str | None) -> float | None:
     value = _number(state)
     if value is None or state is None:
         return None
-    unit = state.attributes.get("unit_of_measurement")
-    if unit == "%":
+    if state.attributes.get("unit_of_measurement") == "%":
         value /= 100
     if not 0 <= value <= 1:
         return None
@@ -78,10 +85,11 @@ def _forecast(
     entity_id: str | None,
     attribute: str | None,
     steps: int,
-    conversion: str,
+    scale: float,
     start_time: datetime,
     step_minutes: int,
 ) -> list[float | None]:
+    """One value per time step from a forecast attribute, multiplied by `scale`."""
     if not entity_id or not attribute:
         return [None] * steps
     state = _state(hass, entity_id)
@@ -92,25 +100,10 @@ def _forecast(
     values: list[float | None] = []
     timed_values: list[tuple[datetime, float]] = []
     has_timestamps = False
-    unit = state.attributes.get("unit_of_measurement") if state else None
     for point in raw:
         point_time: datetime | None = None
         if isinstance(point, dict):
-            time_value = next(
-                (
-                    point[key]
-                    for key in (
-                        "time",
-                        "datetime",
-                        "period_start",
-                        "start_time",
-                        "timestamp",
-                        "date",
-                    )
-                    if key in point
-                ),
-                None,
-            )
+            time_value = next((point[key] for key in _TIME_KEYS if key in point), None)
             if time_value is not None:
                 has_timestamps = True
                 try:
@@ -123,48 +116,25 @@ def _forecast(
                             tzinfo=dt_util.as_local(start_time).tzinfo
                         )
                     point_time = dt_util.as_utc(point_time)
-            point_value = next(
-                (
-                    point[key]
-                    for key in (
-                        "value",
-                        "power",
-                        "price",
-                        "forecast_value",
-                        "pv_estimate",
-                        "estimate",
-                        "watts",
-                        "consumption",
-                    )
-                    if key in point
-                ),
-                None,
-            )
+            point_value = next((point[key] for key in _VALUE_KEYS if key in point), None)
         else:
             point_value = point
         try:
-            value: float | None = float(point_value)
+            value: float | None = float(point_value) * scale
         except (TypeError, ValueError):
             value = None
         if value is not None and not math.isfinite(value):
             value = None
-        if value is not None and conversion == "power":
-            multipliers = {"W": 1, "kW": 1000, "MW": 1_000_000}
-            value = value * multipliers[unit] if unit in multipliers else None
-        elif value is not None and conversion == "price":
-            value = _convert_price(value, unit, entity_id)
         values.append(value)
         if point_time is not None and value is not None:
             timed_values.append((point_time, value))
 
     if has_timestamps:
-        if len(timed_values) != len(values):
+        if not timed_values or len(timed_values) != len(values):
             return [None] * steps
         timed_values.sort(key=lambda item: item[0])
         start_utc = dt_util.as_utc(start_time)
         aligned: list[float | None] = []
-        if not timed_values:
-            return [None] * steps
         index = 0
         for step in range(steps):
             target = start_utc + timedelta(minutes=step * step_minutes)
@@ -179,165 +149,107 @@ def _forecast(
     return (values + [values[-1]] * steps)[:steps]
 
 
-def _convert_price(value: float, unit: Any, entity_id: str) -> float | None:
-    normalized = str(unit or "").strip().casefold()
-    normalized = normalized.replace("€", "eur").replace("$", "usd").replace("£", "gbp")
-    normalized = normalized.replace(" ", "").replace("per", "/")
-    if normalized.endswith("ct/kwh") or normalized.endswith("c/kwh"):
-        return value / 100_000
-    if normalized.endswith("/kwh") or normalized.endswith("kwh"):
-        return value / 1000
-    if normalized.endswith("/mwh") or normalized.endswith("mwh"):
-        return value / 1_000_000
-    if normalized.endswith("/wh") or normalized.endswith("wh"):
-        return value
-    return None
-
-
-def _daily_datetime(value: str | None, now: datetime) -> str | None:
-    """Resolve an HH:MM EV time to its next local occurrence."""
-    try:
-        if value is None:
-            return None
-        parsed = time.fromisoformat(value)
-    except (TypeError, ValueError):
-        return None
-    candidate = datetime.combine(now.date(), parsed, tzinfo=now.tzinfo)
-    if candidate < now:
-        candidate += timedelta(days=1)
-    return candidate.isoformat()
-
-
-def _clock_time(value: str | None) -> str | None:
+def _clock_time(value: str | time | None) -> str | None:
     """Format a configured time as the daily HH:MM the API expects."""
     try:
         if value is None:
             return None
-        return time.fromisoformat(value).strftime("%H:%M")
-    except (TypeError, ValueError):
+        if isinstance(value, str):
+            value = time.fromisoformat(value)
+        return value.strftime("%H:%M")
+    except ValueError:
         return None
-
-
-def _run_started_datetime(
-    hass: HomeAssistant, entity_id: str | None, now: datetime
-) -> str | None:
-    """Parse the timestamp state of the entity marking an already started run."""
-    state = _state(hass, entity_id)
-    if state is None:
-        return None
-    try:
-        parsed = dt_util.parse_datetime(state.state)
-    except (TypeError, ValueError):
-        return None
-    if parsed is None:
-        return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=now.tzinfo)
-    return parsed.isoformat()
 
 
 async def build_request(
-    hass: HomeAssistant, config: dict[str, Any], assets: list[dict[str, Any]]
+    hass: HomeAssistant,
+    config: dict[str, Any],
+    assets: list[dict[str, Any]],
+    inputs: dict[tuple[str, str], Any],
 ) -> dict[str, Any]:
     """Create the physical-input request accepted by POST /optimize."""
-    now = dt_util.now()
-    time_step_minutes = int(config["time_step_minutes"])
-    steps = round(config["horizon_hours"] * 60 / time_step_minutes)
-    now_utc = dt_util.as_utc(now)
-    interval_seconds = time_step_minutes * 60
-    aligned_timestamp = (
-        int(now_utc.timestamp()) // interval_seconds * interval_seconds
-    )
+    step_minutes = config[CONF_TIME_STEP_MINUTES]
+    horizon_hours = config[CONF_HORIZON_HOURS]
+    steps = round(horizon_hours * 60 / step_minutes)
+    interval_seconds = step_minutes * 60
+    aligned_timestamp = int(dt_util.utcnow().timestamp()) // interval_seconds * interval_seconds
     request_start = dt_util.as_local(
         datetime.fromtimestamp(aligned_timestamp, tz=timezone.utc)
     )
+
+    def forecast(entity_id: str | None, attribute: str | None, scale: float = 1):
+        return _forecast(
+            hass, entity_id, attribute, steps, scale, request_start, step_minutes
+        )
+
     result: dict[str, Any] = {
         "timestamp": request_start.isoformat(),
-        "time_step_duration_hours": time_step_minutes / 60,
-        "horizon_hours": config["horizon_hours"],
-        "time_limit_s": config.get("time_limit_s", DEFAULT_TIME_LIMIT_S),
-        "relative_mip_gap": config.get(
-            "relative_mip_gap", DEFAULT_RELATIVE_MIP_GAP
-        ),
-        "switching_penalty": config.get(
-            "switching_penalty", DEFAULT_SWITCHING_PENALTY
-        ),
-        "grid_peak_penalty": config.get(
-            "grid_peak_penalty", DEFAULT_GRID_PEAK_PENALTY
-        ),
+        "time_step_duration": step_minutes / 60,
+        "planning_horizon": horizon_hours,
+        "solver_time_limit": config[CONF_TIME_LIMIT_S],
+        "relative_mip_gap": config[CONF_RELATIVE_MIP_GAP],
+        "storage_switching_penalty": config[CONF_SWITCHING_PENALTY],
+        "grid_peak_penalty": config[CONF_GRID_PEAK_PENALTY],
         "grid": {},
+        "solar": [],
         "base_load": {},
-        "pv": [],
         "controllable_loads": [],
         "storage": [],
     }
     for asset in assets:
-        common = {"id": asset.get("id"), "name": asset.get("name")}
-        kind = asset.get("asset_type")
+        kind = asset["asset_type"]
+        if kind in ENABLEABLE_ASSET_TYPES and not inputs.get((asset["id"], "enabled"), True):
+            continue
+        common = {"id": asset["id"], "name": asset["name"]}
         if kind == "grid":
             result["grid"] = {
                 **common,
-                "max_import_power": asset.get("max_import_power"),
-                "max_export_power": asset.get("max_export_power"),
-                "import_price_forecast": _forecast(
-                    hass,
+                "max_grid_import_power": asset["max_import_power"],
+                "max_grid_export_power": asset["max_export_power"],
+                "grid_import_price_forecast": forecast(
                     asset.get("import_price_entity"),
-                    asset.get("import_price_forecast_attribute", "prices"),
-                    steps,
-                    "price",
-                    start_time=request_start,
-                    step_minutes=time_step_minutes,
+                    asset.get("import_price_forecast_attribute"),
+                    _PRICE_PER_KWH_TO_PER_WH,
                 ),
-                "export_price_forecast": _forecast(
-                    hass,
+                "grid_export_price_forecast": forecast(
                     asset.get("export_price_entity"),
-                    asset.get("export_price_forecast_attribute", "prices"),
-                    steps,
-                    "price",
-                    start_time=request_start,
-                    step_minutes=time_step_minutes,
+                    asset.get("export_price_forecast_attribute"),
+                    _PRICE_PER_KWH_TO_PER_WH,
                 ),
             }
         elif kind == "pv":
-            forecast = _forecast(
-                hass,
-                asset.get("power_forecast_entity"),
-                asset.get("power_forecast_attribute"),
-                steps,
-                "power",
-                start_time=request_start,
-                step_minutes=time_step_minutes,
+            result["solar"].append(
+                {
+                    **common,
+                    "power_forecast": forecast(
+                        asset.get("power_forecast_entity"),
+                        asset.get("power_forecast_attribute"),
+                    ),
+                }
             )
-            result["pv"].append({**common, "power_forecast": forecast})
         elif kind == "base_load":
-            current_power = _power(hass, asset.get("power_entity"))
-            forecast = await async_forecast_base_load(
-                hass,
-                asset.get("power_entity", ""),
-                request_start,
-                time_step_minutes,
-                steps,
-                current_power,
-            )
             result["base_load"] = {
                 **common,
-                "current_power": current_power,
-                "power_forecast": forecast,
+                "power_forecast": await async_forecast_base_load(
+                    hass,
+                    asset["power_entity"],
+                    request_start,
+                    step_minutes,
+                    steps,
+                    history_power(state) if (state := _state(hass, asset["power_entity"])) else None,
+                ),
             }
         elif kind == "controllable_load":
             load = {
                 **common,
-                "average_power": asset.get("average_power"),
-                "energy_demand": asset.get("average_power", 0)
-                * asset.get("runtime_h", 0),
-                "earliest_start_time": _clock_time(asset.get("earliest_start_time")),
-                "latest_finish_time": _clock_time(asset.get("latest_finish_time")),
+                "average_power": asset["average_power"],
+                "energy_demand": asset["average_power"] * asset["runtime_h"],
+                "earliest_start_time": _clock_time(inputs[(asset["id"], "earliest_start_time")]),
+                "latest_finish_time": _clock_time(inputs[(asset["id"], "latest_finish_time")]),
             }
-            run_started_at = _run_started_datetime(
-                hass, asset.get("run_started_at"), now
-            )
-            if run_started_at is not None:
-                load["run_started_at"] = run_started_at
+            run_start_time = inputs[(asset["id"], "run_start_time")]
+            if run_start_time is not None:
+                load["run_start_time"] = run_start_time.isoformat()
             result["controllable_loads"].append(load)
         elif kind in ("home_battery", "ev_battery"):
             model = {
@@ -361,58 +273,82 @@ async def build_request(
             if kind == "ev_battery":
                 model.update(
                     {
-                        "vehicle_efficiency": asset.get("vehicle_efficiency"),
-                        "round_trip_distance": asset.get("round_trip_distance"),
-                        "expected_departure_time": _daily_datetime(
-                            asset.get("expected_departure_time"), now
-                        ),
-                        "expected_arrival_time": _daily_datetime(
-                            asset.get("expected_arrival_time"), now
-                        ),
+                        # km/kWh -> km/Wh
+                        "vehicle_efficiency": asset["vehicle_efficiency"] / 1000,
+                        "round_trip_distance": inputs[(asset["id"], "round_trip_distance")],
+                        **{
+                            key: datetime.combine(
+                                request_start.date(),
+                                inputs[(asset["id"], key)],
+                                tzinfo=request_start.tzinfo,
+                            ).isoformat()
+                            for key in ("expected_departure_time", "expected_arrival_time")
+                        },
                     }
                 )
-                model["vehicle_efficiency"] /= 1000
             result["storage"].append(model)
         elif kind == "dhw_tank":
             result["storage"].append(
                 {
                     **common,
                     "storage_type": kind,
-                    "tank_volume": asset.get("tank_volume"),
-                    "min_water_temperature": asset.get("min_water_temperature"),
-                    "max_water_temperature": asset.get("max_water_temperature"),
                     "current_water_temperature": _temperature(
                         hass, asset.get("water_temperature_entity")
                     ),
-                    "min_comfort_temperature": asset.get("min_comfort_temperature"),
-                    "heat_loss_coefficient": asset.get("heat_loss_coefficient"),
-                    "heat_pump_electric_power": asset.get("heat_pump_electric_power"),
-                    "heat_pump_cop": asset.get("heat_pump_cop"),
-                    "morning_peak_energy_demand": asset.get("morning_peak_energy_demand"),
-                    "evening_peak_energy_demand": asset.get("evening_peak_energy_demand"),
-                    "morning_peak_time": asset.get("morning_peak_time"),
-                    "evening_peak_time": asset.get("evening_peak_time"),
+                    **{
+                        key: asset.get(key)
+                        for key in (
+                            "tank_volume",
+                            "min_water_temperature",
+                            "max_water_temperature",
+                            "min_comfort_temperature",
+                            "heat_loss_coefficient",
+                            "heat_pump_electric_power",
+                            "morning_peak_energy_demand",
+                            "evening_peak_energy_demand",
+                        )
+                    },
+                    "heat_pump_coefficient_of_performance": asset.get("heat_pump_cop"),
+                    "morning_demand_peak_time": _clock_time(asset.get("morning_peak_time")),
+                    "evening_demand_peak_time": _clock_time(asset.get("evening_peak_time")),
                 }
             )
         elif kind == "building_thermal_mass":
+            current_indoor = _temperature(hass, asset.get("indoor_temperature_entity"))
+            # A non-zero configured heat loss coefficient overrides the derived one.
+            derived = await async_derive_thermal_model(
+                hass,
+                asset,
+                current_indoor,
+                heat_loss_needed=not asset["heat_loss_coefficient"],
+            )
             result["storage"].append(
                 {
                     **common,
                     "storage_type": kind,
-                    "floor_area": asset.get("floor_area"),
-                    "thermal_mass_coefficient": asset.get("thermal_mass_coefficient"),
-                    "min_room_temperature": asset.get("min_room_temperature"),
-                    "max_room_temperature": asset.get("max_room_temperature"),
-                    "current_indoor_temperature": _temperature(
-                        hass,
-                        asset.get("indoor_temperature_entity"),
+                    "indoor_temperature": current_indoor,
+                    "outdoor_temperature_forecast": forecast(
+                        asset.get("outdoor_temperature_entity"),
+                        asset.get("outdoor_temperature_forecast_attribute"),
                     ),
-                    "min_comfort_temperature": asset.get("min_comfort_temperature"),
-                    "max_comfort_temperature": asset.get("max_comfort_temperature"),
-                    "heating_rate": asset.get("heating_rate"),
-                    "cooldown_rate": asset.get("cooldown_rate"),
-                    "heat_pump_cop_charge": asset.get("heat_pump_cop_charge"),
-                    "heat_pump_cop_default": asset.get("heat_pump_cop_default"),
+                    **{
+                        key: asset.get(key)
+                        for key in (
+                            "min_room_temperature",
+                            "max_room_temperature",
+                            "min_comfort_temperature",
+                            "max_comfort_temperature",
+                            "heat_loss_coefficient",
+                            "floor_area",
+                            "thermal_mass_coefficient",
+                            "heating_rate",
+                            "cooldown_rate",
+                            "plus_dt_flow_offset",
+                            "minus_dt_flow_offset",
+                            "cop_flow_temperature_sensitivity",
+                        )
+                    },
+                    **derived,
                 }
             )
     return result

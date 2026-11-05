@@ -16,7 +16,7 @@ _HISTORY_WINDOW = timedelta(weeks=4)
 _POWER_MULTIPLIERS = {"W": 1, "kW": 1000, "MW": 1_000_000}
 
 
-def _history_power(state: State) -> float | None:
+def history_power(state: State) -> float | None:
     """Return a history state's power in watts, or None if it is unusable."""
     try:
         value = float(state.state)
@@ -54,7 +54,7 @@ async def async_forecast_base_load(
     for state in states_by_entity.get(entity_id, []):
         if not isinstance(state, State):
             continue
-        watts = _history_power(state)
+        watts = history_power(state)
         if watts is None:
             continue
         local_time = dt_util.as_local(state.last_changed)

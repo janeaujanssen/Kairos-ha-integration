@@ -3,7 +3,14 @@
 from homeassistant.const import Platform
 
 DOMAIN = "kairos"
-PLATFORMS = [Platform.BUTTON, Platform.SENSOR]
+PLATFORMS = [
+    Platform.BUTTON,
+    Platform.DATETIME,
+    Platform.NUMBER,
+    Platform.SENSOR,
+    Platform.SWITCH,
+    Platform.TIME,
+]
 
 CONF_API_URL = "api_url"
 CONF_TIME_STEP_MINUTES = "time_step_minutes"
@@ -27,6 +34,28 @@ DEFAULT_TIME_LIMIT_S = 10
 DEFAULT_RELATIVE_MIP_GAP = 0.0
 DEFAULT_SWITCHING_PENALTY = 0.1
 DEFAULT_GRID_PEAK_PENALTY = 0.1
+
+DEFAULT_SETTINGS = {
+    CONF_TIME_STEP_MINUTES: DEFAULT_TIME_STEP_MINUTES,
+    CONF_OPTIMIZATION_STEPS: DEFAULT_OPTIMIZATION_STEPS,
+    CONF_HORIZON_HOURS: DEFAULT_HORIZON_HOURS,
+    CONF_REQUEST_TIMEOUT: DEFAULT_REQUEST_TIMEOUT,
+    CONF_FAILURE_THRESHOLD: DEFAULT_FAILURE_THRESHOLD,
+    CONF_TIME_LIMIT_S: DEFAULT_TIME_LIMIT_S,
+    CONF_RELATIVE_MIP_GAP: DEFAULT_RELATIVE_MIP_GAP,
+    CONF_SWITCHING_PENALTY: DEFAULT_SWITCHING_PENALTY,
+    CONF_GRID_PEAK_PENALTY: DEFAULT_GRID_PEAK_PENALTY,
+}
+
+# Assets that get an "Enabled" switch; grid and base load are always used.
+ENABLEABLE_ASSET_TYPES = (
+    "pv",
+    "controllable_load",
+    "home_battery",
+    "ev_battery",
+    "dhw_tank",
+    "building_thermal_mass",
+)
 
 ASSET_TYPES = (
     "grid",

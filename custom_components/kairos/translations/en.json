@@ -6,24 +6,24 @@
         "description": "Connect to the Kairos API and set the optimization schedule. Configure assets after setup.",
         "data": {
           "api_url": "Kairos API URL",
-          "time_step_minutes": "Schedule time step [min]",
-          "optimization_steps": "Optimize every N time steps",
-          "horizon_hours": "Planning horizon [h]",
-          "request_timeout": "Request timeout [s]",
-          "failure_threshold": "Failures before repair issue",
-          "time_limit_s": "Solver time limit [s]",
-          "relative_mip_gap": "Relative MIP gap [0-1]",
-          "switching_penalty": "Storage switching penalty [cost per mode change]",
-          "grid_peak_penalty": "Grid peak penalty [relative weight]"
+          "time_step_minutes": "Schedule Time Step [min]",
+          "optimization_steps": "Optimize Every N Time Steps",
+          "horizon_hours": "Planning Horizon [h]",
+          "request_timeout": "Request Timeout [s]",
+          "failure_threshold": "Failures Before Repair Issue",
+          "time_limit_s": "Solver Time Limit [s]",
+          "relative_mip_gap": "Relative MIP Gap [0-1]",
+          "switching_penalty": "Storage Switching Penalty [cost per mode change]",
+          "grid_peak_penalty": "Grid Peak Penalty [relative weight]"
         },
         "data_description": {
           "api_url": "Base URL of the Kairos API including the port, for example http://192.168.1.50:8000.",
           "time_step_minutes": "Length of each schedule slot, from 1 to 1440 minutes. Default 15.",
           "optimization_steps": "Run the optimization at every Nth time step, from 1 to 1440. 1 runs it at every time step. Default 1.",
           "horizon_hours": "How far ahead the schedule is planned, from 1 to 168 hours. Default 24.",
-          "request_timeout": "Maximum wait for one API response, from 1 to 3601 seconds. Must be longer than the solver time limit and shorter than the time step. Default 60.",
+          "request_timeout": "Max wait for one API response, from 1 to 3600 seconds. Must be longer than the solver time limit and shorter than the time step. Default 60.",
           "failure_threshold": "Failed optimization runs before a repair issue is shown in Home Assistant, from 1 to 20. Default 3.",
-          "time_limit_s": "Maximum solver run time per optimization, from 1 to 3600 seconds. Default 10.",
+          "time_limit_s": "Max solver run time per optimization, from 1 to 3600 seconds. Default 10.",
           "relative_mip_gap": "Stop once the best schedule is within this relative gap of the best bound, from 0 to 1. Set to 0 to require the solver to prove optimality. Default 0.",
           "switching_penalty": "Softly discourages storage mode changes between time steps. Set to 0 to allow switching freely. Default 0.1.",
           "grid_peak_penalty": "Dimensionless weight. At 0.40 currency/kWh with 15-minute steps, 0.1 means the optimizer can accept up to 1 cent higher energy cost for a 1 kW lower grid peak. Set to 0 to disable. Default 0.1."
@@ -55,23 +55,23 @@
         "title": "Kairos settings",
         "description": "Set the schedule time step and solver behavior.",
         "data": {
-          "time_step_minutes": "Schedule time step [min]",
-          "optimization_steps": "Optimize every N time steps",
-          "horizon_hours": "Planning horizon [h]",
-          "request_timeout": "Request timeout [s]",
-          "failure_threshold": "Failures before repair issue",
-          "time_limit_s": "Solver time limit [s]",
-          "relative_mip_gap": "Relative MIP gap [0-1]",
-          "switching_penalty": "Storage switching penalty [cost per mode change]",
-          "grid_peak_penalty": "Grid peak penalty [relative weight]"
+          "time_step_minutes": "Schedule Time Step [min]",
+          "optimization_steps": "Optimize Every N Time Steps",
+          "horizon_hours": "Planning Horizon [h]",
+          "request_timeout": "Request Timeout [s]",
+          "failure_threshold": "Failures Before Repair Issue",
+          "time_limit_s": "Solver Time Limit [s]",
+          "relative_mip_gap": "Relative MIP Gap [0-1]",
+          "switching_penalty": "Storage Switching Penalty [cost per mode change]",
+          "grid_peak_penalty": "Grid Peak Penalty [relative weight]"
         },
         "data_description": {
           "time_step_minutes": "Length of each schedule slot, from 1 to 1440 minutes. Default 15.",
           "optimization_steps": "Run the optimization at every Nth time step, from 1 to 1440. 1 runs it at every time step. Default 1.",
           "horizon_hours": "How far ahead the schedule is planned, from 1 to 168 hours. Default 24.",
-          "request_timeout": "Maximum wait for one API response, from 1 to 3601 seconds. Must be longer than the solver time limit and shorter than the time step. Default 60.",
+          "request_timeout": "Max wait for one API response, from 1 to 3600 seconds. Must be longer than the solver time limit and shorter than the time step. Default 60.",
           "failure_threshold": "Failed optimization runs before a repair issue is shown in Home Assistant, from 1 to 20. Default 3.",
-          "time_limit_s": "Maximum solver run time per optimization, from 1 to 3600 seconds. Default 10.",
+          "time_limit_s": "Max solver run time per optimization, from 1 to 3600 seconds. Default 10.",
           "relative_mip_gap": "Stop once the best schedule is within this relative gap of the best bound, from 0 to 1. Set to 0 to require the solver to prove optimality. Default 0.",
           "switching_penalty": "Softly discourages storage mode changes between time steps. Set to 0 to allow switching freely. Default 0.1.",
           "grid_peak_penalty": "Dimensionless weight. At 0.40 currency/kWh with 15-minute steps, 0.1 means the optimizer can accept up to 1 cent higher energy cost for a 1 kW lower grid peak. Set to 0 to disable. Default 0.1."
@@ -83,214 +83,155 @@
           "asset_type": "Asset"
         }
       },
-      "add_asset_config": {
-        "title": "Configure {asset_type}",
-        "description": "Choose Home Assistant entities and enter physical parameters.",
-        "data": {
-          "name": "Name",
-          "power_entity": "Current power [W]",
-          "run_started_at": "Run start time [timestamp entity]",
-          "soc_entity": "Current state of charge (SoC) [0-1]",
-          "water_temperature_entity": "Current water temperature [°C]",
-          "indoor_temperature_entity": "Current indoor temperature [°C]",
-          "power_forecast_entity": "Power forecast source",
-          "power_forecast_attribute": "Power forecast attribute",
-          "import_price_entity": "Import price source",
-          "export_price_entity": "Export price source",
-          "import_price_forecast_attribute": "Import price forecast attribute",
-          "export_price_forecast_attribute": "Export price forecast attribute",
-          "earliest_start_time": "Earliest start time",
-          "latest_finish_time": "Latest finish time",
-          "expected_departure_time": "Expected departure time",
-          "expected_arrival_time": "Expected arrival time",
-          "morning_peak_time": "Morning demand peak time",
-          "evening_peak_time": "Evening demand peak time",
-          "max_import_power": "Maximum import power [W]",
-          "max_export_power": "Maximum export power [W]",
-          "energy_capacity": "Energy capacity [Wh]",
-          "min_soc": "Minimum state of charge (SoC) [0-1]",
-          "max_soc": "Maximum state of charge (SoC) [0-1]",
-          "max_charge_power": "Maximum charge power [W]",
-          "max_discharge_power": "Maximum discharge power [W]",
-          "charge_efficiency": "Charge efficiency [0-1]",
-          "discharge_efficiency": "Discharge efficiency [0-1]",
-          "passive_discharge_power": "Passive discharge power [W]",
-          "average_power": "Average power [W]",
-          "runtime_h": "Runtime [h]",
-          "tank_volume": "Tank volume [L]",
-          "min_water_temperature": "Minimum water temperature [°C]",
-          "max_water_temperature": "Maximum water temperature [°C]",
-          "min_comfort_temperature": "Minimum comfort temperature [°C]",
-          "heat_loss_coefficient": "Heat loss coefficient [W/°C]",
-          "heat_pump_electric_power": "Heat pump electric power [W]",
-          "heat_pump_cop": "Heat pump coefficient of performance (COP)",
-          "morning_peak_energy_demand": "Morning peak energy demand [Wh]",
-          "evening_peak_energy_demand": "Evening peak energy demand [Wh]",
-          "floor_area": "Floor area [m²]",
-          "thermal_mass_coefficient": "Thermal mass coefficient [Wh/m²/°C]",
-          "min_room_temperature": "Min room temperature [°C]",
-          "max_room_temperature": "Max room temperature [°C]",
-          "max_comfort_temperature": "Maximum comfort temperature [°C]",
-          "heating_rate": "Heating rate (+dT) [°C/h]",
-          "cooldown_rate": "Cooldown rate (-dT) [°C/h]",
-          "heat_pump_cop_charge": "Heat pump COP in charge mode",
-          "heat_pump_cop_default": "Heat pump COP in default mode",
-          "vehicle_efficiency": "Vehicle efficiency [km/kWh]",
-          "round_trip_distance": "Round-trip distance [km]"
-        },
-        "data_description": {
-          "run_started_at": "An input_datetime helper or timestamp sensor. Your automation sets it to the time the device was turned on.",
-          "thermal_mass_coefficient": "Heat storage capacity of the building per m² of floor area. This does not need be an exact number, the default is generally fine.",
-          "min_room_temperature": "Physical room temperature that corresponds to 0% state of charge.",
-          "max_room_temperature": "Physical room temperature that corresponds to 100% state of charge.",
-          "min_comfort_temperature": "Soft lower comfort bound. Dropping below it incurs a penalty. It should be set low enough below the normal indoor temperature to allow for some variation in temperature during normal heat pump operation.",
-          "max_comfort_temperature": "Soft upper comfort bound. Exceeding it incurs a penalty. It should be set high enough above the normal indoor temperature to allow for some variation in temperature during normal heat pump operation.",
-          "heating_rate": "Indoor temperature rise per hour measured while the heat pump runs in +dT (charge) mode. The heat pump can run in one of 3 modes: charge mode (+dT), discharge mode (-dT), and neutral mode. This empirically determined parameter defines how quickly the building thermal mass can be charged in +dT (charge) mode.",
-          "cooldown_rate": "Indoor temperature drop per hour measured while the heat pump runs in -dT (discharge) mode."
-        }
-      },
       "edit_asset": {
         "title": "Select an asset to edit",
         "data": {
           "asset_id": "Asset"
         }
       },
-      "edit_asset_config": {
-        "title": "Edit {asset_type}",
-        "description": "The asset identifier is kept stable so existing entities and history remain linked.",
-        "data": {
-          "name": "Name",
-          "power_entity": "Current power [W]",
-          "run_started_at": "Run start time [timestamp entity]",
-          "soc_entity": "Current state of charge (SoC) [0-1]",
-          "water_temperature_entity": "Current water temperature [°C]",
-          "indoor_temperature_entity": "Current indoor temperature [°C]",
-          "power_forecast_entity": "Power forecast source",
-          "power_forecast_attribute": "Power forecast attribute",
-          "import_price_entity": "Import price source",
-          "export_price_entity": "Export price source",
-          "import_price_forecast_attribute": "Import price forecast attribute",
-          "export_price_forecast_attribute": "Export price forecast attribute",
-          "earliest_start_time": "Earliest start time",
-          "latest_finish_time": "Latest finish time",
-          "expected_departure_time": "Expected departure time",
-          "expected_arrival_time": "Expected arrival time",
-          "morning_peak_time": "Morning demand peak time",
-          "evening_peak_time": "Evening demand peak time",
-          "max_import_power": "Maximum import power [W]",
-          "max_export_power": "Maximum export power [W]",
-          "energy_capacity": "Energy capacity [Wh]",
-          "min_soc": "Minimum state of charge (SoC) [0-1]",
-          "max_soc": "Maximum state of charge (SoC) [0-1]",
-          "max_charge_power": "Maximum charge power [W]",
-          "max_discharge_power": "Maximum discharge power [W]",
-          "charge_efficiency": "Charge efficiency [0-1]",
-          "discharge_efficiency": "Discharge efficiency [0-1]",
-          "passive_discharge_power": "Passive discharge power [W]",
-          "average_power": "Average power [W]",
-          "runtime_h": "Runtime [h]",
-          "tank_volume": "Tank volume [L]",
-          "min_water_temperature": "Minimum water temperature [°C]",
-          "max_water_temperature": "Maximum water temperature [°C]",
-          "min_comfort_temperature": "Minimum comfort temperature [°C]",
-          "heat_loss_coefficient": "Heat loss coefficient [W/°C]",
-          "heat_pump_electric_power": "Heat pump electric power [W]",
-          "heat_pump_cop": "Heat pump coefficient of performance (COP)",
-          "morning_peak_energy_demand": "Morning peak energy demand [Wh]",
-          "evening_peak_energy_demand": "Evening peak energy demand [Wh]",
-          "floor_area": "Floor area [m²]",
-          "thermal_mass_coefficient": "Thermal mass coefficient [Wh/m²/°C]",
-          "min_room_temperature": "Min room temperature [°C]",
-          "max_room_temperature": "Max room temperature [°C]",
-          "max_comfort_temperature": "Maximum comfort temperature [°C]",
-          "heating_rate": "Heating rate (+dT) [°C/h]",
-          "cooldown_rate": "Cooldown rate (-dT) [°C/h]",
-          "heat_pump_cop_charge": "Heat pump COP in charge mode",
-          "heat_pump_cop_default": "Heat pump COP in default mode",
-          "vehicle_efficiency": "Vehicle efficiency [km/kWh]",
-          "round_trip_distance": "Round-trip distance [km]"
-        },
-        "data_description": {
-          "run_started_at": "An input_datetime helper or timestamp sensor. Your automation sets it to the time the device was turned on.",
-          "thermal_mass_coefficient": "Heat storage capacity of the building per m² of floor area. This does not need be an exact number, the default is generally fine.",
-          "min_room_temperature": "Physical room temperature that corresponds to 0% state of charge.",
-          "max_room_temperature": "Physical room temperature that corresponds to 100% state of charge.",
-          "min_comfort_temperature": "Soft lower comfort bound. Dropping below it incurs a penalty. It should be set low enough below the normal indoor temperature to allow for some variation in temperature during normal heat pump operation.",
-          "max_comfort_temperature": "Soft upper comfort bound. Exceeding it incurs a penalty. It should be set high enough above the normal indoor temperature to allow for some variation in temperature during normal heat pump operation.",
-          "heating_rate": "Indoor temperature rise per hour measured while the heat pump runs in +dT (charge) mode. The heat pump can run in one of 3 modes: charge mode (+dT), discharge mode (-dT), and neutral mode. This empirically determined parameter defines how quickly the building thermal mass can be charged in +dT (charge) mode.",
-          "cooldown_rate": "Indoor temperature drop per hour measured while the heat pump runs in -dT (discharge) mode."
-        }
-      },
-      "add_asset_config_grid": {
-        "title": "Configure {asset_type}",
-        "description": "Choose Home Assistant entities and enter physical parameters.",
-        "data": {
-          "name": "Name",
-          "import_price_entity": "Grid import price forecast [currency/kWh]",
-          "import_price_forecast_attribute": "Grid import price forecast attribute [currency/kWh]",
-          "export_price_entity": "Grid export price forecast [currency/kWh]",
-          "export_price_forecast_attribute": "Grid export price forecast attribute [currency/kWh]",
-          "max_import_power": "Maximum grid import power [W]",
-          "max_export_power": "Maximum grid export power [W]"
-        }
-      },
-      "add_asset_config_pv": {
-        "title": "Configure {asset_type}",
-        "description": "Choose Home Assistant entities and enter physical parameters.",
-        "data": {
-          "name": "Name",
-          "power_forecast_entity": "Solar production power forecast [W]",
-          "power_forecast_attribute": "Solar production power forecast attribute [W]"
-        }
-      },
-      "add_asset_config_base_load": {
-        "title": "Configure {asset_type}",
-        "description": "Choose Home Assistant entities and enter physical parameters.",
-        "data": {
-          "name": "Name",
-          "power_entity": "Base load power (+/- sensor) [W]"
-        },
-        "data_description": {
-          "power_entity": "The household's electrical power draw excluding every device modelled in Kairos (e.g. Home Battery and EV Battery charging, DHW Tank and Building Thermal Mass heat pumps, Controllable Loads). For the heat pump, only the power offsets w.r.t. the default weather compensation power need to be excluded."
-        }
-      },
-      "edit_asset_config_grid": {
-        "title": "Edit {asset_type}",
-        "description": "The asset identifier is kept stable so existing entities and history remain linked.",
-        "data": {
-          "name": "Name",
-          "import_price_entity": "Grid import price forecast [currency/kWh]",
-          "import_price_forecast_attribute": "Grid import price forecast attribute [currency/kWh]",
-          "export_price_entity": "Grid export price forecast [currency/kWh]",
-          "export_price_forecast_attribute": "Grid export price forecast attribute [currency/kWh]",
-          "max_import_power": "Maximum grid import power [W]",
-          "max_export_power": "Maximum grid export power [W]"
-        }
-      },
-      "edit_asset_config_pv": {
-        "title": "Edit {asset_type}",
-        "description": "The asset identifier is kept stable so existing entities and history remain linked.",
-        "data": {
-          "name": "Name",
-          "power_forecast_entity": "Solar production power forecast [W]",
-          "power_forecast_attribute": "Solar production power forecast attribute [W]"
-        }
-      },
-      "edit_asset_config_base_load": {
-        "title": "Edit {asset_type}",
-        "description": "The asset identifier is kept stable so existing entities and history remain linked.",
-        "data": {
-          "name": "Name",
-          "power_entity": "Base load power (+/- sensor) [W]"
-        },
-        "data_description": {
-          "power_entity": "The household's electrical power draw excluding every device modelled in Kairos (e.g. Home Battery and EV Battery charging, DHW Tank and Building Thermal Mass heat pumps, Controllable Loads). For the heat pump, only the power offsets w.r.t. the default weather compensation power need to be excluded."
-        }
-      },
       "remove_asset": {
         "title": "Select an optional asset to remove",
         "data": {
           "asset_id": "Asset"
+        }
+      },
+      "asset_grid": {
+        "title": "Configure {asset_type}",
+        "description": "Choose Home Assistant entities and enter parameters. An edited asset keeps its identifier so entities and history remain linked.",
+        "data": {
+          "name": "Name",
+          "import_price_entity": "Grid Import Price Forecast [currency/kWh]",
+          "import_price_forecast_attribute": "Grid Import Price Forecast Attribute [currency/kWh]",
+          "export_price_entity": "Grid Export Price Forecast [currency/kWh]",
+          "export_price_forecast_attribute": "Grid Export Price Forecast Attribute [currency/kWh]",
+          "max_import_power": "Max Grid Import Power [W]",
+          "max_export_power": "Max Grid Export Power [W]"
+        }
+      },
+      "asset_pv": {
+        "title": "Configure {asset_type}",
+        "description": "Choose Home Assistant entities and enter parameters. An edited asset keeps its identifier so entities and history remain linked. Use the created Enabled switch to include or exclude it.",
+        "data": {
+          "name": "Name",
+          "power_forecast_entity": "Solar Production Power Forecast [W]",
+          "power_forecast_attribute": "Solar Production Power Forecast Attribute [W]"
+        }
+      },
+      "asset_base_load": {
+        "title": "Configure {asset_type}",
+        "description": "Choose Home Assistant entities and enter parameters. An edited asset keeps its identifier so entities and history remain linked.",
+        "data": {
+          "name": "Name",
+          "power_entity": "Base Load Power (+/- Sensor) [W]"
+        },
+        "data_description": {
+          "power_entity": "The household's electrical power draw excluding every device modelled in Kairos (e.g. Home Battery and EV Battery charging, DHW Tank and Building Thermal Mass heat pumps, Controllable Loads)."
+        }
+      },
+      "asset_controllable_load": {
+        "title": "Configure {asset_type}",
+        "description": "Enter parameters. Kairos creates the Enabled, Run Start Time, Earliest Start Time and Latest Finish Time entities. Your automation should set Run Start Time to the time the device was last turned on.",
+        "data": {
+          "name": "Name",
+          "average_power": "Average Power [W]",
+          "runtime_h": "Runtime [h]"
+        }
+      },
+      "asset_home_battery": {
+        "title": "Configure {asset_type}",
+        "description": "Choose Home Assistant entities and enter parameters. Kairos creates the Enabled switch.",
+        "data": {
+          "name": "Name",
+          "soc_entity": "Current State of Charge [0-1]",
+          "energy_capacity": "Energy Capacity [Wh]",
+          "min_soc": "Min State of Charge [0-1]",
+          "max_soc": "Max State of Charge [0-1]",
+          "max_charge_power": "Max Charge Power [W]",
+          "max_discharge_power": "Max Discharge Power [W]",
+          "charge_efficiency": "Charge Efficiency [0-1]",
+          "discharge_efficiency": "Discharge Efficiency [0-1]",
+          "passive_discharge_power": "Passive Discharge Power [W]"
+        }
+      },
+      "asset_ev_battery": {
+        "title": "Configure {asset_type}",
+        "description": "Choose Home Assistant entities and enter parameters. Kairos creates the Enabled, Round-Trip Distance, Expected Departure Time and Expected Arrival Time entities.",
+        "data": {
+          "name": "Name",
+          "soc_entity": "Current State of Charge [0-1]",
+          "energy_capacity": "Energy Capacity [Wh]",
+          "min_soc": "Min State of Charge [0-1]",
+          "max_soc": "Max State of Charge [0-1]",
+          "max_charge_power": "Max Charge Power [W]",
+          "max_discharge_power": "Max Discharge Power [W]",
+          "charge_efficiency": "Charge Efficiency [0-1]",
+          "discharge_efficiency": "Discharge Efficiency [0-1]",
+          "passive_discharge_power": "Passive Discharge Power [W]",
+          "vehicle_efficiency": "Vehicle Efficiency [km/kWh]"
+        }
+      },
+      "asset_dhw_tank": {
+        "title": "Configure {asset_type}",
+        "description": "Choose Home Assistant entities and enter parameters. Kairos creates the Enabled switch.",
+        "data": {
+          "name": "Name",
+          "water_temperature_entity": "Current Water Temperature [°C]",
+          "tank_volume": "Tank Volume [L]",
+          "min_water_temperature": "Min Water Temperature [°C]",
+          "max_water_temperature": "Max Water Temperature [°C]",
+          "min_comfort_temperature": "Min Comfort Temperature [°C]",
+          "heat_loss_coefficient": "Heat Loss Coefficient [W/°C]",
+          "heat_pump_electric_power": "Heat Pump Electric Power [W]",
+          "heat_pump_cop": "Heat Pump Coefficient of Performance (COP)",
+          "morning_peak_energy_demand": "Morning Peak Energy Demand [Wh]",
+          "evening_peak_energy_demand": "Evening Peak Energy Demand [Wh]",
+          "morning_peak_time": "Morning Demand Peak Time",
+          "evening_peak_time": "Evening Demand Peak Time"
+        },
+        "data_description": {
+          "min_water_temperature": "Set to the ambient temperature around the tank. Sets the bottom of the state of charge scale and, together with the Max Water Temperature, the range used for passive discharge power."
+        }
+      },
+      "asset_building_thermal_mass": {
+        "title": "Configure {asset_type}",
+        "description": "Choose Home Assistant entities and enter parameters. Kairos creates the Enabled switch. The reference COP and COP outdoor temperature coefficient are derived from the history of the selected entities.",
+        "data": {
+          "name": "Name",
+          "indoor_temperature_entity": "Indoor Temperature [°C]",
+          "outdoor_temperature_entity": "Outdoor Temperature [°C]",
+          "outdoor_temperature_forecast_attribute": "Outdoor Temperature Forecast Attribute [°C]",
+          "electric_power_entity": "Electric Power [W]",
+          "thermal_power_entity": "Thermal Power [W]",
+          "min_room_temperature": "Min Room Temperature [°C]",
+          "max_room_temperature": "Max Room Temperature [°C]",
+          "min_comfort_temperature": "Min Comfort Temperature [°C]",
+          "max_comfort_temperature": "Max Comfort Temperature [°C]",
+          "heat_loss_coefficient": "Heat Loss Coefficient [W/°C]",
+          "floor_area": "Floor Area [m²]",
+          "thermal_mass_coefficient": "Thermal Mass Coefficient [Wh/m²/°C]",
+          "heating_rate": "Heating Rate (+dT) [°C/h]",
+          "plus_dt_flow_offset": "+dT Flow Temperature Offset [°C]",
+          "cooldown_rate": "Cooldown Rate (-dT) [°C/h]",
+          "minus_dt_flow_offset": "-dT Flow Temperature Offset [°C]",
+          "cop_flow_temperature_sensitivity": "COP Flow Temperature Sensitivity [-/°C]"
+        },
+        "data_description": {
+          "indoor_temperature_entity": "Indoor temperature value and history. Used to calculate Heat Loss Coefficient and the current indoor temperature is used to derive COP as function of outdoor temperature.",
+          "outdoor_temperature_entity": "Outdoor temperature history. Used to calculate Heat Loss Coefficient and to derive COP as function of outdoor temperature.",
+          "outdoor_temperature_forecast_attribute": "Attribute of outdoor temperature sensor that contains the forecast. Used to calculate passive discharge power forecast by multiplying temperature difference with heat loss coefficient.",
+          "electric_power_entity": "Heat pump electric power history. Used with Thermal Power and outdoor temperature to derive COP as function of outdoor temperature.",
+          "thermal_power_entity": "Heat pump thermal output history. Used to calculate Heat Loss Coefficient and to derive COP as function of outdoor temperature.",
+          "min_room_temperature": "Physical room temperature that corresponds to 0% state of charge.",
+          "max_room_temperature": "Physical room temperature that corresponds to 100% state of charge.",
+          "min_comfort_temperature": "Soft lower comfort bound. Dropping below it incurs a penalty. It should be set low enough below the normal indoor temperature to allow for some variation in temperature during normal heat pump operation.",
+          "max_comfort_temperature": "Soft upper comfort bound. Exceeding it incurs a penalty. It should be set high enough above the normal indoor temperature to allow for some variation in temperature during normal heat pump operation.",
+          "heat_loss_coefficient": "This is already calculated from historic indoor temperature, outdoor temperature and thermal power. If this is non-zero it will override the calculated value. Used to derive the Passive Discharge Power.",
+          "thermal_mass_coefficient": "Heat storage capacity of the building per m² of floor area. This does not need be an exact number, the default is generally fine.",
+          "heating_rate": "Indoor temperature rise per hour in +dT (charge) mode. Empirically determined. Used with Floor Area and Thermal Mass Coefficient to calculate the charge power.",
+          "plus_dt_flow_offset": "Flow temperature offset on the weather compensation curve in +dT mode.",
+          "cooldown_rate": "Indoor temperature change per hour in -dT (discharge) mode, entered as a negative value. Empirically determined. Used with Floor Area and Thermal Mass Coefficient to calculate the discharge power.",
+          "minus_dt_flow_offset": "Flow temperature offset on the weather compensation curve in -dT mode.",
+          "cop_flow_temperature_sensitivity": "Fractional change in COP per °C of flow temperature offset, e.g. -0.02 = -2%/°C."
         }
       }
     },

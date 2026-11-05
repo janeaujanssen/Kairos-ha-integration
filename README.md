@@ -1,4 +1,25 @@
 # Kairos Home Assistant Integration
 
-Kairos connects Home Assistant to the [Kairos energy optimization API](https://github.com/janeaujanssen/Kairos). It sends a snapshot of configured energy assets to `POST /optimize` and exposes the returned schedules as Home Assistant sensors. The integration never controls physical devices; use your own automations to apply setpoints.
+Kairos connects Home Assistant to the [Kairos energy optimization API](https://github.com/janeaujanssen/Kairos). It sends a snapshot of configured energy assets to `POST /optimize` and exposes the returned schedules as Home Assistant sensors. The integration never controls physical devices; use your own automations to apply setpoints. Inputs and outputs follow the [data flow architecture](https://github.com/janeaujanssen/Kairos/blob/main/kairos/architecture/data_flow_architecture.md).
+
+## Entities created by Kairos
+
+Inputs (config entities, created per asset; values are restored after a restart):
+
+| Entity | Assets |
+|---|---|
+| `<Asset> Enabled` switch | Solar, Controllable Load, Home Battery, EV Battery, DHW Tank, Building Thermal Mass |
+| `<Asset> Run Start Time` datetime | Controllable Load. Your automation should set it to the time the device was last turned on. |
+| `<Asset> Earliest Start Time`, `Latest Finish Time` time | Controllable Load |
+| `<Asset> Round-Trip Distance` number, `Expected Departure Time`, `Expected Arrival Time` time | EV Battery |
+
+Outputs:
+
+- `<Asset> Power Setpoint` sensor (Grid, Controllable Load, Home Battery, EV Battery, DHW Tank, Building Thermal Mass) with a `forecast` attribute holding the scheduled time and value pairs. It becomes `unavailable` when the schedule runs out.
+- `<Asset> Mode` sensor (Building Thermal Mass): `charge` (+dT), `neutral` or `discharge` (-dT).
+- `Objective Cost` and `Last Optimization Attempt` diagnostic sensors, and a `Run optimization` button.
+
+## Building Thermal Mass history
+
+The reference COP and the COP outdoor temperature coefficient are derived from the last 14 days of recorder history of the indoor temperature, outdoor temperature, electric power and thermal power entities. The heat loss coefficient is derived from the same history unless a non-zero value is configured.
 

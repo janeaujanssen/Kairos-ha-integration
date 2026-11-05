@@ -8,13 +8,22 @@ from typing import Any
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_TIME_STEP_MINUTES, DOMAIN, DEFAULT_TIME_STEP_MINUTES
+from .const import CONF_TIME_STEP_MINUTES, DOMAIN
 from .coordinator import KairosCoordinator
+from .entity import system_device_info
+
+_SETPOINT_ASSET_TYPES = (
+    "grid",
+    "controllable_load",
+    "home_battery",
+    "ev_battery",
+    "dhw_tank",
+    "building_thermal_mass",
+)
 
 
 async def async_setup_entry(
@@ -25,20 +34,11 @@ async def async_setup_entry(
     """Set up schedule and diagnostic sensors."""
     runtime: KairosCoordinator = hass.data[DOMAIN][entry.entry_id]
     entities: list[SensorEntity] = [
-        KairosStatusSensor(runtime, entry),
         KairosObjectiveSensor(runtime, entry),
         KairosApiResponseSensor(runtime, entry),
-        KairosBaseLoadForecastSensor(runtime, entry),
     ]
     for asset in runtime.assets:
-        if asset["asset_type"] in (
-            "grid",
-            "controllable_load",
-            "home_battery",
-            "ev_battery",
-            "dhw_tank",
-            "building_thermal_mass",
-        ):
+        if asset["asset_type"] in _SETPOINT_ASSET_TYPES:
             entities.append(KairosSetpointSensor(runtime, entry, asset))
         if asset["asset_type"] == "building_thermal_mass":
             entities.append(KairosModeSensor(runtime, entry, asset))
@@ -53,134 +53,70 @@ class KairosSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, runtime: KairosCoordinator, entry: ConfigEntry) -> None:
         super().__init__(runtime.coordinator)
         self.runtime = runtime
-        self.entry = entry
+        self._attr_device_info = system_device_info(entry, runtime)
 
-    def _device_info(self) -> DeviceInfo:
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"{self.entry.entry_id}_system")},
-            name="Kairos",
-            manufacturer="Kairos",
-            configuration_url=self.runtime.config["api_url"],
+
+class KairosScheduleSensor(KairosSensor):
+    """Current value of one asset's schedule, unavailable once the schedule runs out."""
+
+    _schedule_key: str
+
+    def __init__(
+        self, runtime: KairosCoordinator, entry: ConfigEntry, asset: dict[str, Any]
+    ) -> None:
+        super().__init__(runtime, entry)
+        self.asset = asset
+
+    def _points(self) -> list[dict[str, Any]]:
+        return (
+            self.runtime.coordinator.data["assets"]
+            .get(self.asset["id"], {})
+            .get(self._schedule_key, [])
         )
 
+    def _active_point(self) -> dict[str, Any] | None:
+        return _active_point(self._points(), self.runtime.config[CONF_TIME_STEP_MINUTES])
 
-class KairosSetpointSensor(KairosSensor):
+    @property
+    def native_value(self) -> float | str | None:
+        point = self._active_point()
+        return point["value"] if point else None
+
+    @property
+    def available(self) -> bool:
+        return self._active_point() is not None
+
+
+class KairosSetpointSensor(KairosScheduleSensor):
     """Current power setpoint with the complete scheduled horizon."""
 
+    _schedule_key = "schedule"
     _attr_native_unit_of_measurement = "W"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
         self, runtime: KairosCoordinator, entry: ConfigEntry, asset: dict[str, Any]
     ) -> None:
-        super().__init__(runtime, entry)
-        self.asset = asset
+        super().__init__(runtime, entry, asset)
         self._attr_unique_id = f"{entry.entry_id}_{asset['id']}_setpoint"
         self._attr_name = f"{asset['name']} Power Setpoint"
-        self._attr_device_info = self._device_info()
-
-    @property
-    def native_value(self) -> float | None:
-        schedule = self.runtime.coordinator.data["assets"].get(self.asset["id"], {}).get(
-            "schedule", []
-        )
-        point = _active_point(
-            schedule,
-            self.runtime.config.get(
-                CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES
-            ),
-        )
-        return point.get("value") if point else None
-
-    @property
-    def available(self) -> bool:
-        schedule = self.runtime.coordinator.data["assets"].get(self.asset["id"], {}).get(
-            "schedule", []
-        )
-        return _active_point(
-            schedule,
-            self.runtime.config.get(
-                CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES
-            ),
-        ) is not None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        data = self.runtime.coordinator.data
-        return {
-            "schedule": self.runtime.coordinator.data["assets"]
-            .get(self.asset["id"], {})
-            .get("schedule", []),
-            "time_step_minutes": self.runtime.config.get("time_step_minutes", 15),
-            "optimization_id": data.get("last_run"),
-            "optimized_at": data.get("last_run"),
-        }
+        return {"forecast": self._points()}
 
 
-class KairosModeSensor(KairosSensor):
-    """Building thermal-mass control mode derived from signed power."""
+class KairosModeSensor(KairosScheduleSensor):
+    """Building thermal mass heat pump mode: charge (+dT), neutral or discharge (-dT)."""
+
+    _schedule_key = "mode"
 
     def __init__(
         self, runtime: KairosCoordinator, entry: ConfigEntry, asset: dict[str, Any]
     ) -> None:
-        super().__init__(runtime, entry)
-        self.asset = asset
+        super().__init__(runtime, entry, asset)
         self._attr_unique_id = f"{entry.entry_id}_{asset['id']}_mode"
         self._attr_name = f"{asset['name']} Mode"
-        self._attr_device_info = self._device_info()
-
-    @property
-    def native_value(self) -> str | None:
-        schedule = self.runtime.coordinator.data["assets"].get(self.asset["id"], {}).get(
-            "schedule", []
-        )
-        point = _active_point(
-            schedule,
-            self.runtime.config.get(
-                CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES
-            ),
-        )
-        if point is None:
-            return None
-        value = point["value"]
-        return "charge" if value > 0 else "discharge" if value < 0 else "neutral"
-
-    @property
-    def available(self) -> bool:
-        schedule = self.runtime.coordinator.data["assets"].get(self.asset["id"], {}).get(
-            "schedule", []
-        )
-        return _active_point(
-            schedule,
-            self.runtime.config.get(
-                CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES
-            ),
-        ) is not None
-
-
-class KairosStatusSensor(KairosSensor):
-    """Diagnostic state for the latest optimization cycle."""
-
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
-    def __init__(self, runtime: KairosCoordinator, entry: ConfigEntry) -> None:
-        super().__init__(runtime, entry)
-        self._attr_unique_id = f"{entry.entry_id}_status"
-        self._attr_name = "Status"
-        self._attr_device_info = self._device_info()
-
-    @property
-    def native_value(self) -> str:
-        return self.runtime.coordinator.data.get("status", "error")
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        data = self.runtime.coordinator.data
-        return {
-            "last_run": data.get("last_run"),
-            "duration": data.get("duration"),
-            "consecutive_failures": data.get("consecutive_failures", 0),
-        }
 
 
 class KairosObjectiveSensor(KairosSensor):
@@ -192,7 +128,6 @@ class KairosObjectiveSensor(KairosSensor):
         super().__init__(runtime, entry)
         self._attr_unique_id = f"{entry.entry_id}_objective_cost"
         self._attr_name = "Objective Cost"
-        self._attr_device_info = self._device_info()
 
     @property
     def native_value(self) -> float | None:
@@ -200,54 +135,7 @@ class KairosObjectiveSensor(KairosSensor):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        return {
-            "optimization_id": self.runtime.coordinator.data.get("last_run")
-        }
-
-
-class KairosBaseLoadForecastSensor(KairosSensor):
-    """Current household base-load forecast with its full horizon."""
-
-    _attr_native_unit_of_measurement = "W"
-    _attr_state_class = SensorStateClass.MEASUREMENT
-
-    def __init__(self, runtime: KairosCoordinator, entry: ConfigEntry) -> None:
-        super().__init__(runtime, entry)
-        self._attr_unique_id = f"{entry.entry_id}_base_load_forecast"
-        self._attr_name = "Base Load Power Forecast"
-        self._attr_device_info = self._device_info()
-
-    @property
-    def native_value(self) -> float | None:
-        point = _active_point(
-            _base_load_forecast_points(self.runtime.coordinator.data),
-            self.runtime.config.get(
-                CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES
-            ),
-        )
-        value = point.get("value") if point else None
-        return value if isinstance(value, (int, float)) else None
-
-    @property
-    def available(self) -> bool:
-        point = _active_point(
-            _base_load_forecast_points(self.runtime.coordinator.data),
-            self.runtime.config.get(
-                CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES
-            ),
-        )
-        return point is not None and isinstance(point.get("value"), (int, float))
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        data = self.runtime.coordinator.data
-        return {
-            "forecast": _base_load_forecast_points(data),
-            "time_step_minutes": self.runtime.config.get(
-                CONF_TIME_STEP_MINUTES, DEFAULT_TIME_STEP_MINUTES
-            ),
-            "optimization_id": data.get("last_run"),
-        }
+        return {"optimization_id": self.runtime.coordinator.data.get("last_run")}
 
 
 class KairosApiResponseSensor(KairosSensor):
@@ -259,7 +147,6 @@ class KairosApiResponseSensor(KairosSensor):
         super().__init__(runtime, entry)
         self._attr_unique_id = f"{entry.entry_id}_last_api_response"
         self._attr_name = "Last Optimization Attempt"
-        self._attr_device_info = self._device_info()
 
     @property
     def native_value(self) -> str:
@@ -268,10 +155,7 @@ class KairosApiResponseSensor(KairosSensor):
             return f"HTTP {data['last_api_status']}"
         response = data.get("last_api_response")
         if isinstance(response, dict):
-            status = response.get("status")
-            if isinstance(status, str):
-                return f"API {status}" if status.casefold() == "error" else status
-            return "Response received"
+            return f"API {response.get('status')}"
         if data.get("last_error"):
             return "Request error"
         return "No response"
@@ -308,24 +192,3 @@ def _active_point(
         else:
             active = point
     return active
-
-
-def _base_load_forecast_points(data: dict[str, Any]) -> list[dict[str, Any]]:
-    """Convert the submitted base-load forecast to timestamped sensor points."""
-    request = data.get("last_api_request")
-    if not isinstance(request, dict):
-        return []
-    base_load = request.get("base_load")
-    values = base_load.get("power_forecast") if isinstance(base_load, dict) else None
-    start_time = dt_util.parse_datetime(str(request.get("timestamp", "")))
-    if not isinstance(values, list) or start_time is None:
-        return []
-
-    step_minutes = request.get("time_step_duration_hours", 0) * 60
-    return [
-        {
-            "time": (start_time + timedelta(minutes=index * step_minutes)).isoformat(),
-            "value": value,
-        }
-        for index, value in enumerate(values)
-    ]
