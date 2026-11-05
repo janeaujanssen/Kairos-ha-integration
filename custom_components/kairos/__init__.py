@@ -12,7 +12,7 @@ from .coordinator import KairosCoordinator
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate asset inputs to match the data flow architecture."""
-    if entry.version > 3:
+    if entry.version > 4:
         return False
 
     data = {**entry.data}
@@ -43,6 +43,8 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     migrated.setdefault("heat_loss_coefficient", 0)
                     migrated["cooldown_rate"] = -abs(migrated.get("cooldown_rate", 0.03))
                 migrated.pop("run_started_at", None)
+            if entry.version < 4 and kind == "pv":
+                migrated["asset_type"] = "solar"
             migrated_assets.append(migrated)
         settings[CONF_ASSETS] = migrated_assets
 
@@ -55,7 +57,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 registry.async_remove(entity_id)
 
     hass.config_entries.async_update_entry(
-        entry, data=data, options=options, version=3
+        entry, data=data, options=options, version=4
     )
     return True
 

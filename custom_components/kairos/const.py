@@ -49,7 +49,7 @@ DEFAULT_SETTINGS = {
 
 # Assets that get an "Enabled" switch; grid and base load are always used.
 ENABLEABLE_ASSET_TYPES = (
-    "pv",
+    "solar",
     "controllable_load",
     "home_battery",
     "ev_battery",
@@ -59,7 +59,7 @@ ENABLEABLE_ASSET_TYPES = (
 
 ASSET_TYPES = (
     "grid",
-    "pv",
+    "solar",
     "base_load",
     "controllable_load",
     "home_battery",

@@ -16,15 +16,6 @@ from .const import CONF_TIME_STEP_MINUTES, DOMAIN
 from .coordinator import KairosCoordinator
 from .entity import system_device_info
 
-_SETPOINT_ASSET_TYPES = (
-    "grid",
-    "controllable_load",
-    "home_battery",
-    "ev_battery",
-    "dhw_tank",
-    "building_thermal_mass",
-)
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -38,8 +29,7 @@ async def async_setup_entry(
         KairosApiResponseSensor(runtime, entry),
     ]
     for asset in runtime.assets:
-        if asset["asset_type"] in _SETPOINT_ASSET_TYPES:
-            entities.append(KairosSetpointSensor(runtime, entry, asset))
+        entities.append(KairosSetpointSensor(runtime, entry, asset))
         if asset["asset_type"] == "building_thermal_mass":
             entities.append(KairosModeSensor(runtime, entry, asset))
     async_add_entities(entities)

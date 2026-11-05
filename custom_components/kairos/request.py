@@ -217,7 +217,7 @@ async def build_request(
                     _PRICE_PER_KWH_TO_PER_WH,
                 ),
             }
-        elif kind == "pv":
+        elif kind == "solar":
             result["solar"].append(
                 {
                     **common,

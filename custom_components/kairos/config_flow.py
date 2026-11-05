@@ -42,7 +42,7 @@ from .const import (
 
 _ASSET_LABELS = {
     "grid": "⚡ Grid",
-    "pv": "🔆 Solar",
+    "solar": "🔆 Solar",
     "base_load": "🏠 Base Load",
     "controllable_load": "🔌 Controllable Load",
     "home_battery": "🔋 Home Battery",
@@ -110,7 +110,7 @@ _NUMBER_BOUNDS: dict[str, tuple[float | None, float | None]] = {
 
 _ASSET_ENTITY_FIELDS: dict[str, tuple[str, ...]] = {
     "grid": ("import_price_entity", "export_price_entity"),
-    "pv": ("power_forecast_entity",),
+    "solar": ("power_forecast_entity",),
     "base_load": ("power_entity",),
     "controllable_load": (),
     "home_battery": ("soc_entity",),
@@ -126,7 +126,7 @@ _ASSET_ENTITY_FIELDS: dict[str, tuple[str, ...]] = {
 
 _ASSET_STATIC_FIELDS: dict[str, tuple[str, ...]] = {
     "grid": ("max_import_power", "max_export_power"),
-    "pv": (),
+    "solar": (),
     "base_load": (),
     "controllable_load": ("average_power", "runtime_h"),
     "home_battery": (
@@ -283,7 +283,7 @@ async def _check_api(hass: HomeAssistant, api_url: str, timeout: int) -> None:
 class KairosConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Set up the Kairos API connection and optimization settings."""
 
-    VERSION = 3
+    VERSION = 4
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

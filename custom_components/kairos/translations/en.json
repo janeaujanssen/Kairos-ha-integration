@@ -108,7 +108,7 @@
           "max_export_power": "Max Grid Export Power [W]"
         }
       },
-      "asset_pv": {
+      "asset_solar": {
         "title": "Configure {asset_type}",
         "description": "Choose Home Assistant entities and enter parameters. An edited asset keeps its identifier so entities and history remain linked. Use the created Enabled switch to include or exclude it.",
         "data": {

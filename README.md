@@ -15,7 +15,7 @@ Inputs (config entities, created per asset; values are restored after a restart)
 
 Outputs:
 
-- `<Asset> Power Setpoint` sensor (Grid, Controllable Load, Home Battery, EV Battery, DHW Tank, Building Thermal Mass) with a `forecast` attribute holding the scheduled time and value pairs. It becomes `unavailable` when the schedule runs out.
+- `<Asset> Power Setpoint` sensor (all assets) with a `forecast` attribute holding the scheduled time and value pairs. It becomes `unavailable` when the schedule runs out.
 - `<Asset> Mode` sensor (Building Thermal Mass): `charge` (+dT), `neutral` or `discharge` (-dT).
 - `Objective Cost` and `Last Optimization Attempt` diagnostic sensors, and a `Run optimization` button.
 
