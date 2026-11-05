@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -26,6 +26,8 @@ async def async_setup_entry(
 
 class KairosEnabledSwitch(KairosInput, SwitchEntity):
     """Whether the asset is part of the optimization."""
+
+    _attr_device_class = SwitchDeviceClass.SWITCH
 
     def __init__(
         self, runtime: KairosCoordinator, entry: ConfigEntry, asset: dict[str, Any]

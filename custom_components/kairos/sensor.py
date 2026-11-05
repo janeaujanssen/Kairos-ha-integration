@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
@@ -21,8 +21,8 @@ _NO_SETPOINT_ASSET_TYPES = ("solar", "base_load")
 
 # Optimizer forecasts per asset type: (forecast key, name suffix, unit).
 _STORAGE_FORECASTS = (
-    ("energy_demand", "Energy Demand Forecast", "Wh per time step"),
-    ("passive_discharge_power", "Passive Discharge Power Forecast", "W per time step"),
+    ("energy_demand", "Energy Demand Forecast", "Wh"),
+    ("passive_discharge_power", "Passive Discharge Power Forecast", "W"),
 )
 _FORECAST_SENSORS = {
     "grid": (
@@ -43,6 +43,14 @@ _THERMAL_PARAMETER_SENSORS = (
     ("reference_outdoor_temperature", "Reference Outdoor Temperature", "°C"),
     ("cop_outdoor_temperature_coefficient", "COP Outdoor Temperature Coefficient", "COP/°C"),
 )
+
+
+def _device_class(unit: str | None) -> SensorDeviceClass | None:
+    """Device class for units Home Assistant accepts; rate units get none."""
+    return {
+        "W": SensorDeviceClass.POWER,
+        "°C": SensorDeviceClass.TEMPERATURE,
+    }.get(unit)
 
 
 async def async_setup_entry(
@@ -117,6 +125,7 @@ class KairosSetpointSensor(KairosScheduleSensor):
 
     _schedule_key = "schedule"
     _attr_native_unit_of_measurement = "W"
+    _attr_device_class = SensorDeviceClass.POWER
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
@@ -135,6 +144,8 @@ class KairosModeSensor(KairosScheduleSensor):
     """Building thermal mass heat pump mode: charge (+dT), neutral or discharge (-dT)."""
 
     _schedule_key = "mode"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["charge", "neutral", "discharge"]
 
     def __init__(
         self, runtime: KairosCoordinator, entry: ConfigEntry, asset: dict[str, Any]
@@ -164,6 +175,7 @@ class KairosForecastSensor(KairosScheduleSensor):
         self._attr_unique_id = f"{entry.entry_id}_{asset['id']}_{key}_forecast"
         self._attr_name = f"{asset['name']} {suffix}"
         self._attr_native_unit_of_measurement = unit
+        self._attr_device_class = _device_class(unit)
 
     def _points(self) -> list[dict[str, Any]]:
         return self.runtime.coordinator.data["forecasts"].get(self.asset["id"], {}).get(
@@ -195,6 +207,7 @@ class KairosThermalParameterSensor(KairosSensor):
         self._attr_unique_id = f"{entry.entry_id}_{asset['id']}_{key}_parameter"
         self._attr_name = f"{asset['name']} {suffix}"
         self._attr_native_unit_of_measurement = unit
+        self._attr_device_class = _device_class(unit)
 
     @property
     def native_value(self) -> float | None:

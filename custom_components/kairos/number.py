@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.number import NumberEntity, NumberMode
+from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -28,6 +28,7 @@ class KairosRoundTripDistance(KairosInput, NumberEntity):
     """Expected round-trip distance of the EV."""
 
     _attr_native_unit_of_measurement = "km"
+    _attr_device_class = NumberDeviceClass.DISTANCE
     _attr_native_min_value = 0
     _attr_native_max_value = 10000
     _attr_native_step = 1
