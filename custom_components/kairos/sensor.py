@@ -137,6 +137,7 @@ class KairosForecastSensor(KairosScheduleSensor):
     """Optimizer forecast for one asset; state is the current step, Forecast holds the horizon."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
         self,
