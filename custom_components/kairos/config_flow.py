@@ -73,20 +73,20 @@ _STATIC_FIELDS: dict[str, float] = {
     "heat_pump_cop": 3,
     "morning_peak_energy_demand": 150,
     "evening_peak_energy_demand": 180,
-    "floor_area": 100,
+    "floor_area": 400,
     "thermal_mass_coefficient": 200,
     "min_room_temperature": 15,
     "max_room_temperature": 23,
-    "max_comfort_temperature": 21,
-    "heating_rate": 0.6,
+    "max_comfort_temperature": 22,
+    "heating_rate": 0.03,
     "plus_dt_flow_offset": 5,
-    "cooldown_rate": -0.1,
+    "cooldown_rate": -0.03,
     "minus_dt_flow_offset": -5,
     "cop_flow_temperature_sensitivity": -0.02,
     "vehicle_efficiency": 5.0,
 }
 _ASSET_DEFAULTS: dict[str, dict[str, float]] = {
-    "building_thermal_mass": {"min_comfort_temperature": 15, "heat_loss_coefficient": 0},
+    "building_thermal_mass": {"min_comfort_temperature": 20, "heat_loss_coefficient": 0},
 }
 
 # (min, max) of number fields; None means unbounded.

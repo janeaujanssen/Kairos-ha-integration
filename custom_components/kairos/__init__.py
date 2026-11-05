@@ -41,7 +41,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     migrated.pop("heat_pump_cop_charge", None)
                     migrated.pop("heat_pump_cop_default", None)
                     migrated.setdefault("heat_loss_coefficient", 0)
-                    migrated["cooldown_rate"] = -abs(migrated.get("cooldown_rate", 0.1))
+                    migrated["cooldown_rate"] = -abs(migrated.get("cooldown_rate", 0.03))
                 migrated.pop("run_started_at", None)
             migrated_assets.append(migrated)
         settings[CONF_ASSETS] = migrated_assets
