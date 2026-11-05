@@ -16,6 +16,9 @@ from .const import CONF_TIME_STEP_MINUTES, DOMAIN
 from .coordinator import KairosCoordinator
 from .entity import system_device_info
 
+# Inputs, not optimized assets: the optimizer returns no schedule for them.
+_NO_SETPOINT_ASSET_TYPES = ("solar", "base_load")
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -29,7 +32,8 @@ async def async_setup_entry(
         KairosApiResponseSensor(runtime, entry),
     ]
     for asset in runtime.assets:
-        entities.append(KairosSetpointSensor(runtime, entry, asset))
+        if asset["asset_type"] not in _NO_SETPOINT_ASSET_TYPES:
+            entities.append(KairosSetpointSensor(runtime, entry, asset))
         if asset["asset_type"] == "building_thermal_mass":
             entities.append(KairosModeSensor(runtime, entry, asset))
     async_add_entities(entities)
