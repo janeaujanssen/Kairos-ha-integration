@@ -19,13 +19,31 @@ from .entity import system_device_info
 # Inputs, not optimized assets: the optimizer returns no schedule for them.
 _NO_SETPOINT_ASSET_TYPES = ("solar", "base_load")
 
+# Optimizer forecasts per asset type: (forecast key, name suffix, unit).
+_STORAGE_FORECASTS = (
+    ("energy_demand", "Energy Demand Forecast", "Wh per time step"),
+    ("passive_discharge_power", "Passive Discharge Power Forecast", "W per time step"),
+)
+_FORECAST_SENSORS = {
+    "grid": (
+        ("import_price", "Import Price Forecast", "price/kWh"),
+        ("export_price", "Export Price Forecast", "price/kWh"),
+    ),
+    "solar": (("power", "Production Power Forecast", "W"),),
+    "base_load": (("power", "Power Forecast", "W"),),
+    "home_battery": _STORAGE_FORECASTS,
+    "ev_battery": _STORAGE_FORECASTS,
+    "dhw_tank": _STORAGE_FORECASTS,
+    "building_thermal_mass": (*_STORAGE_FORECASTS, ("cop", "COP Forecast", None)),
+}
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: Any,
 ) -> None:
-    """Set up schedule and diagnostic sensors."""
+    """Set up schedule, forecast and diagnostic sensors."""
     runtime: KairosCoordinator = hass.data[DOMAIN][entry.entry_id]
     entities: list[SensorEntity] = [
         KairosObjectiveSensor(runtime, entry),
@@ -36,6 +54,8 @@ async def async_setup_entry(
             entities.append(KairosSetpointSensor(runtime, entry, asset))
         if asset["asset_type"] == "building_thermal_mass":
             entities.append(KairosModeSensor(runtime, entry, asset))
+        for key, suffix, unit in _FORECAST_SENSORS.get(asset["asset_type"], ()):
+            entities.append(KairosForecastSensor(runtime, entry, asset, key, suffix, unit))
     async_add_entities(entities)
 
 
@@ -111,6 +131,34 @@ class KairosModeSensor(KairosScheduleSensor):
         super().__init__(runtime, entry, asset)
         self._attr_unique_id = f"{entry.entry_id}_{asset['id']}_mode"
         self._attr_name = f"{asset['name']} Mode"
+
+
+class KairosForecastSensor(KairosScheduleSensor):
+    """Optimizer forecast for one asset; state is the current step, Forecast holds the horizon."""
+
+    def __init__(
+        self,
+        runtime: KairosCoordinator,
+        entry: ConfigEntry,
+        asset: dict[str, Any],
+        key: str,
+        suffix: str,
+        unit: str | None,
+    ) -> None:
+        super().__init__(runtime, entry, asset)
+        self._key = key
+        self._attr_unique_id = f"{entry.entry_id}_{asset['id']}_{key}_forecast"
+        self._attr_name = f"{asset['name']} {suffix}"
+        self._attr_native_unit_of_measurement = unit
+
+    def _points(self) -> list[dict[str, Any]]:
+        return self.runtime.coordinator.data["forecasts"].get(self.asset["id"], {}).get(
+            self._key, []
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"forecast": self._points()}
 
 
 class KairosObjectiveSensor(KairosSensor):

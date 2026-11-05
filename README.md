@@ -17,6 +17,7 @@ Outputs:
 
 - `<Asset> Power Setpoint` sensor (all assets except Solar and Base Load, which the optimizer does not schedule) with a `forecast` attribute holding the scheduled time and value pairs. It becomes `unavailable` when the schedule runs out.
 - `<Asset> Mode` sensor (Building Thermal Mass): `charge` (+dT), `neutral` or `discharge` (-dT).
+- Optimizer forecast sensors: the forecast the optimizer used, with the time and value pairs in a `forecast` attribute. Grid: `Import Price Forecast`, `Export Price Forecast`. Solar: `Production Power Forecast`. Base Load: `Power Forecast`. Every storage asset: `Energy Demand Forecast`, `Passive Discharge Power Forecast`. Building Thermal Mass also: `COP Forecast`.
 - `Objective Cost` and `Last Optimization Attempt` diagnostic sensors, and a `Run optimization` button.
 
 ## Building Thermal Mass history

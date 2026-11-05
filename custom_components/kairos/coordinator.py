@@ -55,6 +55,7 @@ class KairosCoordinator:
         self._last_api_status: int | None = None
         self._last_error: str | None = None
         self._schedules: dict[str, Any] = {}
+        self._forecasts: dict[str, Any] = {}
         self._rejected_payload_fingerprint: str | None = None
         self._last_optimized_slot: int | None = None
         self._force_update = False
@@ -76,6 +77,7 @@ class KairosCoordinator:
         saved = await self._store.async_load()
         if saved:
             self._schedules = saved.get("assets", {})
+            self._forecasts = saved.get("forecasts", {})
             self._last_run = saved.get("optimized_at")
             self._objective_cost = saved.get("objective_cost")
         self.coordinator.data = self._sensor_data()
@@ -143,6 +145,7 @@ class KairosCoordinator:
     def _sensor_data(self) -> dict[str, Any]:
         return {
             "assets": self._schedules,
+            "forecasts": self._forecasts,
             "objective_cost": self._objective_cost,
             "last_run": self._last_run,
             "last_api_request": self._last_api_request,
@@ -177,6 +180,7 @@ class KairosCoordinator:
             status = result.get("status")
             if status in ("Optimal", "Feasible"):
                 self._schedules = result["assets"]
+                self._forecasts = result.get("forecasts", {})
                 self._last_run = payload["timestamp"]
                 self._objective_cost = result.get("objective_cost")
                 self._failures = 0
@@ -207,6 +211,7 @@ class KairosCoordinator:
         await self._store.async_save(
             {
                 "assets": self._schedules,
+                "forecasts": self._forecasts,
                 "optimized_at": self._last_run,
                 "objective_cost": self._objective_cost,
             }
