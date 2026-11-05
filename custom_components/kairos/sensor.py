@@ -36,6 +36,13 @@ _FORECAST_SENSORS = {
     "dhw_tank": _STORAGE_FORECASTS,
     "building_thermal_mass": (*_STORAGE_FORECASTS, ("cop", "COP Forecast", None)),
 }
+# Building thermal mass model parameters returned by the optimizer: (response key, name suffix, unit).
+_THERMAL_PARAMETER_SENSORS = (
+    ("heat_loss_coefficient", "Heat Loss Coefficient", "W/°C"),
+    ("reference_cop", "Reference COP", None),
+    ("reference_outdoor_temperature", "Reference Outdoor Temperature", "°C"),
+    ("cop_outdoor_temperature_coefficient", "COP Outdoor Temperature Coefficient", "COP/°C"),
+)
 
 
 async def async_setup_entry(
@@ -54,6 +61,10 @@ async def async_setup_entry(
             entities.append(KairosSetpointSensor(runtime, entry, asset))
         if asset["asset_type"] == "building_thermal_mass":
             entities.append(KairosModeSensor(runtime, entry, asset))
+            entities.extend(
+                KairosThermalParameterSensor(runtime, entry, asset, key, suffix, unit)
+                for key, suffix, unit in _THERMAL_PARAMETER_SENSORS
+            )
         for key, suffix, unit in _FORECAST_SENSORS.get(asset["asset_type"], ()):
             entities.append(KairosForecastSensor(runtime, entry, asset, key, suffix, unit))
     async_add_entities(entities)
@@ -162,6 +173,33 @@ class KairosForecastSensor(KairosScheduleSensor):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         return {"forecast": self._points()}
+
+
+class KairosThermalParameterSensor(KairosSensor):
+    """Building thermal mass model parameter exactly as the optimizer reports it."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        runtime: KairosCoordinator,
+        entry: ConfigEntry,
+        asset: dict[str, Any],
+        key: str,
+        suffix: str,
+        unit: str | None,
+    ) -> None:
+        super().__init__(runtime, entry)
+        self.asset = asset
+        self._key = key
+        self._attr_unique_id = f"{entry.entry_id}_{asset['id']}_{key}_parameter"
+        self._attr_name = f"{asset['name']} {suffix}"
+        self._attr_native_unit_of_measurement = unit
+
+    @property
+    def native_value(self) -> float | None:
+        parameters = self.runtime.coordinator.data["thermal_parameters"]
+        return parameters.get(self.asset["id"], {}).get(self._key)
 
 
 class KairosObjectiveSensor(KairosSensor):
