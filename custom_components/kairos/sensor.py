@@ -136,6 +136,8 @@ class KairosModeSensor(KairosScheduleSensor):
 class KairosForecastSensor(KairosScheduleSensor):
     """Optimizer forecast for one asset; state is the current step, Forecast holds the horizon."""
 
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
     def __init__(
         self,
         runtime: KairosCoordinator,
