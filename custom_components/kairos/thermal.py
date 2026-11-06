@@ -16,7 +16,7 @@ from homeassistant.util import dt as dt_util
 from .forecasts import history_power
 
 _HISTORY_WINDOW = timedelta(days=14)
-_MIN_HOURS = 12
+_MIN_HOURS = 3
 _MIN_RUNNING_POWER = 100  # W electric; below this the heat pump counts as off
 _INDOOR_BAND = 1.0  # °C around the current indoor temperature
 
