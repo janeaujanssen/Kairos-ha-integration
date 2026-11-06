@@ -33,7 +33,7 @@ def _history_temperature(state: State) -> float | None:
 
 
 def _hourly(
-    states: list[Any], convert: Callable[[State], float | None]
+    states: list[Any], convert: Callable[[State], float | None], until: datetime
 ) -> dict[datetime, float]:
     buckets: dict[datetime, list[float]] = defaultdict(list)
     for state in states:
@@ -41,7 +41,21 @@ def _hourly(
         if value is not None:
             # last_updated, not last_changed: steady sensors only write new samples without changing state.
             buckets[state.last_updated.replace(minute=0, second=0, microsecond=0)].append(value)
-    return {hour: fmean(values) for hour, values in buckets.items()}
+    hourly = {hour: fmean(values) for hour, values in buckets.items()}
+    if not hourly:
+        return hourly
+    # The recorder stores a state only when it changes, so an hour without a sample holds the last value.
+    # shortcut: a sensor that goes silent keeps its last value for the whole gap, upgrade to a max hold age if that biases the fit.
+    filled: dict[datetime, float] = {}
+    value = None
+    hour = min(hourly)
+    end = until.replace(minute=0, second=0, microsecond=0)
+    while hour <= end:
+        value = hourly.get(hour, value)
+        if value is not None:
+            filled[hour] = value
+        hour += timedelta(hours=1)
+    return filled
 
 
 def fit_heat_loss(
@@ -153,8 +167,8 @@ async def async_derive_thermal_model(
             significant_changes_only=False,
         )
     )
-    indoor, outdoor = (_hourly(states.get(e, []), _history_temperature) for e in entity_ids[:2])
-    electric, thermal = (_hourly(states.get(e, []), history_power) for e in entity_ids[2:])
+    indoor, outdoor = (_hourly(states.get(e, []), _history_temperature, now) for e in entity_ids[:2])
+    electric, thermal = (_hourly(states.get(e, []), history_power, now) for e in entity_ids[2:])
     history_rows.extend(_history_rows(indoor, outdoor, electric, thermal))
 
     reference_cop, reference_outdoor, cop_coefficient = fit_cop(
