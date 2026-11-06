@@ -209,6 +209,11 @@ class KairosCoordinator:
                     self._rejected_payload_fingerprint = _payload_fingerprint(payload)
             _LOGGER.error("Kairos optimization failed: %s", err)
             self._report_failure(str(err))
+            await self.hass.services.async_call(
+                "logbook",
+                "log",
+                {"name": "Kairos", "message": f"Optimization failed: {err}", "domain": DOMAIN},
+            )
         return self._sensor_data()
 
     async def _persist(self) -> None:
