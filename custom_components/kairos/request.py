@@ -92,7 +92,8 @@ def _forecast(
     """One value per time step from a forecast attribute, multiplied by `scale`."""
     if not entity_id or not attribute:
         return [None] * steps
-    state = _state(hass, entity_id)
+    # The forecast attribute stays valid while the entity state is unknown or unavailable.
+    state = hass.states.get(entity_id)
     raw = state.attributes.get(attribute) if state is not None else None
     if not isinstance(raw, (list, tuple)) or not raw:
         return [None] * steps
