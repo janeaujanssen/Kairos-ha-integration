@@ -11,6 +11,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
@@ -209,11 +210,15 @@ class KairosCoordinator:
                     self._rejected_payload_fingerprint = _payload_fingerprint(payload)
             _LOGGER.error("Kairos optimization failed: %s", err)
             self._report_failure(str(err))
-            await self.hass.services.async_call(
-                "logbook",
-                "log",
-                {"name": "Kairos", "message": f"Optimization failed: {err}", "domain": DOMAIN},
+            entity_id = er.async_get(self.hass).async_get_entity_id(
+                "sensor", DOMAIN, f"{self.entry.entry_id}_last_api_response"
             )
+            log_data = {"name": "Kairos", "message": f"Optimization failed: {err}"}
+            if entity_id:
+                log_data["entity_id"] = entity_id
+            else:
+                log_data["domain"] = DOMAIN
+            await self.hass.services.async_call("logbook", "log", log_data)
         return self._sensor_data()
 
     async def _persist(self) -> None:
