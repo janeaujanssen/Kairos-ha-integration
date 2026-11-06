@@ -16,7 +16,7 @@ from homeassistant.util import dt as dt_util
 from .forecasts import history_power
 
 _HISTORY_WINDOW = timedelta(days=14)
-_MIN_HOURS = 3
+_MIN_HOURS = 12
 _MIN_RUNNING_POWER = 100  # W electric; below this the heat pump counts as off
 _INDOOR_BAND = 1.0  # °C around the current indoor temperature
 
@@ -61,9 +61,15 @@ def fit_heat_loss(
         ys.append(thermal[hour] - thermal_mass * (following - indoor[hour]))
     denominator = sum(x * x for x in xs)
     coefficient = sum(x * y for x, y in zip(xs, ys)) / denominator if denominator else 0
-    if len(xs) < _MIN_HOURS or coefficient <= 0:
+    if len(xs) < _MIN_HOURS:
         raise ValueError(
-            "Not enough indoor, outdoor and thermal power history to derive the heat loss coefficient."
+            f"Not enough indoor, outdoor and thermal power history to derive the heat loss coefficient: "
+            f"{len(xs)} usable hours, {_MIN_HOURS} needed."
+        )
+    if coefficient <= 0:
+        raise ValueError(
+            f"The heat loss coefficient derived from the history is not positive ({coefficient:.1f} W/°C) "
+            "- the history does not show the building losing heat."
         )
     return coefficient
 
@@ -84,7 +90,10 @@ def fit_cop(
         and abs(indoor[hour] - current_indoor) <= _INDOOR_BAND
     ]
     if len(points) < _MIN_HOURS:
-        raise ValueError("Not enough heat pump history to derive the COP.")
+        raise ValueError(
+            f"Not enough heat pump history to derive the COP: {len(points)} usable hours, "
+            f"{_MIN_HOURS} needed."
+        )
     reference_outdoor = fmean(x for x, _ in points)
     reference_cop = fmean(y for _, y in points)
     variance = sum((x - reference_outdoor) ** 2 for x, _ in points)
