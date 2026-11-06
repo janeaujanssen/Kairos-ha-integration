@@ -39,7 +39,8 @@ def _hourly(
     for state in states:
         value = convert(state) if isinstance(state, State) else None
         if value is not None:
-            buckets[state.last_changed.replace(minute=0, second=0, microsecond=0)].append(value)
+            # last_updated, not last_changed: steady sensors only write new samples without changing state.
+            buckets[state.last_updated.replace(minute=0, second=0, microsecond=0)].append(value)
     return {hour: fmean(values) for hour, values in buckets.items()}
 
 
