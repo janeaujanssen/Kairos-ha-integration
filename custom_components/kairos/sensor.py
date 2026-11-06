@@ -263,6 +263,7 @@ class KairosApiResponseSensor(KairosSensor):
             "http_status": data.get("last_api_status"),
             "api_request": data.get("last_api_request"),
             "api_response": data.get("last_api_response"),
+            "thermal_history": data.get("last_thermal_history"),
             "error": data.get("last_error"),
         }
 

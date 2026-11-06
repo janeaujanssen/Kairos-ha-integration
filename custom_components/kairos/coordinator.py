@@ -52,6 +52,7 @@ class KairosCoordinator:
         self._last_run: str | None = None
         self._objective_cost: float | None = None
         self._last_api_request: dict[str, Any] | None = None
+        self._last_thermal_history: dict[str, list[dict[str, Any]]] | None = None
         self._last_api_response: Any = None
         self._last_api_status: int | None = None
         self._last_error: str | None = None
@@ -153,6 +154,7 @@ class KairosCoordinator:
             "objective_cost": self._objective_cost,
             "last_run": self._last_run,
             "last_api_request": self._last_api_request,
+            "last_thermal_history": self._last_thermal_history,
             "last_api_response": self._last_api_response,
             "last_api_status": self._last_api_status,
             "last_error": self._last_error,
@@ -163,12 +165,13 @@ class KairosCoordinator:
         if not self._claim_optimization_slot():
             return self._sensor_data()
         self._last_api_request = None
+        self._last_thermal_history = None
         self._last_api_response = None
         self._last_api_status = None
         self._last_error = None
         payload: dict[str, Any] | None = None
         try:
-            payload = await build_request(
+            payload, self._last_thermal_history = await build_request(
                 self.hass, self.config, self.assets, self.inputs
             )
             fingerprint = _payload_fingerprint(payload)

@@ -101,13 +101,38 @@ def fit_cop(
     return reference_cop, reference_outdoor, covariance / variance if variance else 0.0
 
 
+def _history_rows(
+    indoor: Mapping[datetime, float],
+    outdoor: Mapping[datetime, float],
+    electric: Mapping[datetime, float],
+    thermal: Mapping[datetime, float],
+) -> list[dict[str, Any]]:
+    """One row per hour with any sample; missing samples are None."""
+    series = {
+        "indoor_temperature": indoor,
+        "outdoor_temperature": outdoor,
+        "electric_power": electric,
+        "thermal_power": thermal,
+    }
+    return [
+        {
+            "time": hour.isoformat(),
+            **{
+                name: None if values.get(hour) is None else round(values[hour], 2)
+                for name, values in series.items()
+            },
+        }
+        for hour in sorted(indoor.keys() | outdoor.keys() | electric.keys() | thermal.keys())
+    ]
+
+
 async def async_derive_thermal_model(
     hass: HomeAssistant,
     asset: dict[str, Any],
     current_indoor: float | None,
     heat_loss_needed: bool,
-) -> dict[str, float]:
-    """Derive the history-based request fields of a building thermal mass asset."""
+) -> tuple[dict[str, float], list[dict[str, Any]]]:
+    """Derive the history-based request fields and the hourly history they were derived from."""
     if current_indoor is None:
         raise ValueError("The indoor temperature is unavailable.")
     entity_ids = [
@@ -142,4 +167,4 @@ async def async_derive_thermal_model(
         model["heat_loss_coefficient"] = fit_heat_loss(
             indoor, outdoor, thermal, asset["floor_area"] * asset["thermal_mass_coefficient"]
         )
-    return model
+    return model, _history_rows(indoor, outdoor, electric, thermal)
