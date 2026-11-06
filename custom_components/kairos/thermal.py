@@ -131,8 +131,9 @@ async def async_derive_thermal_model(
     asset: dict[str, Any],
     current_indoor: float | None,
     heat_loss_needed: bool,
-) -> tuple[dict[str, float], list[dict[str, Any]]]:
-    """Derive the history-based request fields and the hourly history they were derived from."""
+    history_rows: list[dict[str, Any]],
+) -> dict[str, float]:
+    """Derive the history-based request fields. history_rows is filled before the fit, so it survives a failed fit."""
     if current_indoor is None:
         raise ValueError("The indoor temperature is unavailable.")
     entity_ids = [
@@ -154,6 +155,7 @@ async def async_derive_thermal_model(
     )
     indoor, outdoor = (_hourly(states.get(e, []), _history_temperature) for e in entity_ids[:2])
     electric, thermal = (_hourly(states.get(e, []), history_power) for e in entity_ids[2:])
+    history_rows.extend(_history_rows(indoor, outdoor, electric, thermal))
 
     reference_cop, reference_outdoor, cop_coefficient = fit_cop(
         current_indoor, indoor, outdoor, electric, thermal
@@ -167,4 +169,4 @@ async def async_derive_thermal_model(
         model["heat_loss_coefficient"] = fit_heat_loss(
             indoor, outdoor, thermal, asset["floor_area"] * asset["thermal_mass_coefficient"]
         )
-    return model, _history_rows(indoor, outdoor, electric, thermal)
+    return model

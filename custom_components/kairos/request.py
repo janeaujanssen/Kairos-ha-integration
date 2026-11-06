@@ -166,8 +166,9 @@ async def build_request(
     config: dict[str, Any],
     assets: list[dict[str, Any]],
     inputs: dict[tuple[str, str], Any],
-) -> tuple[dict[str, Any], dict[str, list[dict[str, Any]]]]:
-    """Create the physical-input request accepted by POST /optimize and the thermal history per asset id."""
+    thermal_history: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any]:
+    """Create the physical-input request accepted by POST /optimize; thermal_history is filled per asset id."""
     step_minutes = config[CONF_TIME_STEP_MINUTES]
     horizon_hours = config[CONF_HORIZON_HOURS]
     steps = round(horizon_hours * 60 / step_minutes)
@@ -196,7 +197,6 @@ async def build_request(
         "controllable_loads": [],
         "storage": [],
     }
-    thermal_history: dict[str, list[dict[str, Any]]] = {}
     for asset in assets:
         kind = asset["asset_type"]
         if kind in ENABLEABLE_ASSET_TYPES and not inputs.get((asset["id"], "enabled"), True):
@@ -317,11 +317,12 @@ async def build_request(
         elif kind == "building_thermal_mass":
             current_indoor = _temperature(hass, asset.get("indoor_temperature_entity"))
             # A non-zero configured heat loss coefficient overrides the derived one.
-            derived, thermal_history[asset["id"]] = await async_derive_thermal_model(
+            derived = await async_derive_thermal_model(
                 hass,
                 asset,
                 current_indoor,
                 heat_loss_needed=not asset["heat_loss_coefficient"],
+                history_rows=thermal_history.setdefault(asset["id"], []),
             )
             result["storage"].append(
                 {
@@ -352,4 +353,4 @@ async def build_request(
                     **derived,
                 }
             )
-    return result, thermal_history
+    return result
