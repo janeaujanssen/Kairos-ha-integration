@@ -88,8 +88,27 @@ def _forecast(
     scale: float,
     start_time: datetime,
     step_minutes: int,
-) -> list[float | None]:
-    """One value per time step from a forecast attribute, multiplied by `scale`."""
+) -> list[float | str | None]:
+    """Return one forecast value per time step, multiplied by `scale`.
+
+    Definitions: 
+    Input data (points): one entry of the attribute list, a dict holding a time and a value.
+    - Time: the timestamp of a point. Naive times are read as local time.
+    - Value: the number of a point.
+
+    Output data (steps): one forecast value per slot, starting at the request start and repeating every `step_minutes`.
+
+    Rules:
+    1. Checking imported data
+    - If the entity or attribute is not set, or the attribute is missing or empty: every step is None.
+    - If a point has no valid time: the time for that point is None.
+    - If a point has no valid value: the value for that point is None.
+    2. Creating forecast steps
+    - If any point has time None: every step gets value 'Timestamps invalid'.
+    - Otherwise each step uses the latest point at or before its time, or the first point if the step is earlier than all of them.
+    - Scale: each numeric step value is multiplied by `scale` after it is chosen.
+    """
+    # 1. Checking imported data
     if not entity_id or not attribute:
         return [None] * steps
     # The forecast attribute stays valid while the entity state is unknown or unavailable.
@@ -98,56 +117,44 @@ def _forecast(
     if not isinstance(raw, (list, tuple)) or not raw:
         return [None] * steps
 
-    values: list[float | None] = []
-    timed_values: list[tuple[datetime, float]] = []
-    has_timestamps = False
+    # Each point is (time in UTC, value); the value stays unscaled until the end.
+    timed_values: list[tuple[datetime, float | None]] = []
     for point in raw:
+        point = point if isinstance(point, dict) else {}
+        time_value = next((point[key] for key in _TIME_KEYS if key in point), None)
         point_time: datetime | None = None
-        if isinstance(point, dict):
-            time_value = next((point[key] for key in _TIME_KEYS if key in point), None)
-            if time_value is not None:
-                has_timestamps = True
-                try:
-                    point_time = dt_util.parse_datetime(str(time_value))
-                except (TypeError, ValueError):
-                    point_time = None
-                if point_time is not None:
-                    if point_time.tzinfo is None:
-                        point_time = point_time.replace(
-                            tzinfo=dt_util.as_local(start_time).tzinfo
-                        )
-                    point_time = dt_util.as_utc(point_time)
-            point_value = next((point[key] for key in _VALUE_KEYS if key in point), None)
-        else:
-            point_value = point
+        if time_value is not None:
+            try:
+                point_time = dt_util.parse_datetime(str(time_value))
+            except (TypeError, ValueError):
+                point_time = None
+        if point_time is None:
+            # Any point without a valid time invalidates the whole forecast.
+            return ["Timestamps invalid"] * steps
+        if point_time.tzinfo is None:
+            point_time = point_time.replace(tzinfo=dt_util.as_local(start_time).tzinfo)
+        point_value = next((point[key] for key in _VALUE_KEYS if key in point), None)
         try:
-            value: float | None = float(point_value) * scale
+            value: float | None = float(point_value)
         except (TypeError, ValueError):
             value = None
         if value is not None and not math.isfinite(value):
             value = None
-        values.append(value)
-        if point_time is not None and value is not None:
-            timed_values.append((point_time, value))
+        timed_values.append((dt_util.as_utc(point_time), value))
 
-    if has_timestamps:
-        if not timed_values or len(timed_values) != len(values):
-            return [None] * steps
-        timed_values.sort(key=lambda item: item[0])
-        start_utc = dt_util.as_utc(start_time)
-        aligned: list[float | None] = []
-        index = 0
-        for step in range(steps):
-            target = start_utc + timedelta(minutes=step * step_minutes)
-            while index + 1 < len(timed_values) and timed_values[index + 1][0] <= target:
-                index += 1
-            if target < timed_values[0][0]:
-                aligned.append(timed_values[0][1])
-            else:
-                aligned.append(timed_values[index][1])
-        return aligned
-
-    return (values + [values[-1]] * steps)[:steps]
+    # 2. Creating forecast steps
+    timed_values.sort(key=lambda item: item[0])
+    start_utc = dt_util.as_utc(start_time)
+    aligned: list[float | str | None] = []
+    index = 0
+    for step in range(steps):
+        target = start_utc + timedelta(minutes=step * step_minutes)
+        # Move to the latest point at or before the target; earlier steps keep the first point.
+        while index + 1 < len(timed_values) and timed_values[index + 1][0] <= target:
+            index += 1
+        value = timed_values[index][1]
+        aligned.append(None if value is None else value * scale)
+    return aligned
 
 
 def _clock_time(value: str | time | None) -> str | None:
