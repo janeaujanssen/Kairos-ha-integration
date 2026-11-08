@@ -21,18 +21,6 @@ from .const import (
 from .forecasts import async_forecast_base_load, history_power
 from .thermal import async_derive_thermal_model
 
-_TIME_KEYS = ("time", "datetime", "period_start", "start_time", "timestamp", "date")
-_VALUE_KEYS = (
-    "value",
-    "power",
-    "price",
-    "forecast_value",
-    "pv_estimate",
-    "estimate",
-    "watts",
-    "consumption",
-    "temperature",
-)
 _PRICE_PER_KWH_TO_PER_WH = 1 / 1000
 
 
@@ -121,25 +109,33 @@ def _forecast(
     timed_values: list[tuple[datetime, float | None]] = []
     for point in raw:
         point = point if isinstance(point, dict) else {}
-        time_value = next((point[key] for key in _TIME_KEYS if key in point), None)
+        # The time is the first field that parses as a datetime; the value is the first other finite number.
+        time_key = None
         point_time: datetime | None = None
-        if time_value is not None:
+        for key, item in point.items():
             try:
-                point_time = dt_util.parse_datetime(str(time_value))
+                point_time = dt_util.parse_datetime(str(item))
             except (TypeError, ValueError):
                 point_time = None
+            if point_time is not None:
+                time_key = key
+                break
         if point_time is None:
             # Any point without a valid time invalidates the whole forecast.
             return ["Timestamps invalid"] * steps
         if point_time.tzinfo is None:
             point_time = point_time.replace(tzinfo=dt_util.as_local(start_time).tzinfo)
-        point_value = next((point[key] for key in _VALUE_KEYS if key in point), None)
-        try:
-            value: float | None = float(point_value)
-        except (TypeError, ValueError):
-            value = None
-        if value is not None and not math.isfinite(value):
-            value = None
+        value: float | None = None
+        for key, item in point.items():
+            if key == time_key:
+                continue
+            try:
+                number = float(item)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(number):
+                value = number
+                break
         timed_values.append((dt_util.as_utc(point_time), value))
 
     # 2. Creating forecast steps
