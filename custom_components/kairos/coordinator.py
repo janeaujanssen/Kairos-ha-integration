@@ -87,10 +87,9 @@ class KairosCoordinator:
         self.coordinator.data = self._sensor_data()
 
     async def async_start(self) -> None:
-        """Run the initial optimization, once the input entities have restored their values."""
+        """Start the schedule ticks; optimization runs only on schedule or manual request."""
         if not self._configuration_ready():
             return
-        await self.coordinator.async_refresh()
         self._schedule_next_tick()
 
     async def async_unload(self) -> None:
@@ -130,10 +129,8 @@ class KairosCoordinator:
         step_seconds = self.config[CONF_TIME_STEP_MINUTES] * 60
         slot = int(dt_util.utcnow().timestamp()) // step_seconds
         every = int(self.config[CONF_OPTIMIZATION_STEPS])
-        due = (
-            self._force_update
-            or self._last_optimized_slot is None
-            or (slot % every == 0 and slot != self._last_optimized_slot)
+        due = self._force_update or (
+            slot % every == 0 and slot != self._last_optimized_slot
         )
         if due:
             self._last_optimized_slot = slot
