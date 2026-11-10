@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime
-import hashlib
-import json
 import logging
 from typing import Any
 
@@ -59,9 +57,9 @@ class KairosCoordinator:
         self._schedules: dict[str, Any] = {}
         self._forecasts: dict[str, Any] = {}
         self._thermal_parameters: dict[str, Any] = {}
-        self._rejected_payload_fingerprint: str | None = None
         self._last_optimized_slot: int | None = None
         self._force_update = False
+        self._running = False
         self._cancel_tick: Callable[[], None] | None = None
         self.api = KairosApi(
             async_get_clientsession(hass),
@@ -157,26 +155,33 @@ class KairosCoordinator:
             "last_error": self._last_error,
         }
 
+    @property
+    def running(self) -> bool:
+        """Return whether an optimization is in progress."""
+        return self._running
+
     async def _async_update_data(self) -> dict[str, Any]:
         """Build and submit one snapshot, retaining schedules on failure."""
         if not self._claim_optimization_slot():
             return self._sensor_data()
+        self._running = True
+        self.coordinator.async_set_updated_data(self._sensor_data())
+        try:
+            return await self._run_optimization()
+        finally:
+            self._running = False
+
+    async def _run_optimization(self) -> dict[str, Any]:
+        """Build and submit one snapshot, retaining schedules on failure."""
         self._last_api_request = None
         self._last_thermal_history = {}
         self._last_api_response = None
         self._last_api_status = None
         self._last_error = None
-        payload: dict[str, Any] | None = None
         try:
             payload = await build_request(
                 self.hass, self.config, self.assets, self.inputs, self._last_thermal_history
             )
-            fingerprint = _payload_fingerprint(payload)
-            if (
-                fingerprint == self._rejected_payload_fingerprint
-                and not self._force_update
-            ):
-                return self._sensor_data()
             self._last_api_request = payload
             result = await self.api.async_optimize(payload)
             self._last_api_response = result
@@ -206,8 +211,6 @@ class KairosCoordinator:
             if isinstance(err, KairosApiError):
                 self._last_api_status = err.status_code
                 self._last_api_response = err.response
-                if err.status_code == 400 and payload is not None:
-                    self._rejected_payload_fingerprint = _payload_fingerprint(payload)
             _LOGGER.error("Kairos optimization failed: %s", err)
             self._report_failure(str(err))
             entity_id = er.async_get(self.hass).async_get_entity_id(
@@ -243,10 +246,3 @@ class KairosCoordinator:
                 translation_key="optimization_failed",
                 translation_placeholders={"detail": detail},
             )
-
-
-def _payload_fingerprint(payload: dict[str, Any]) -> str:
-    """Hash input values while ignoring the per-request timestamp."""
-    stable_payload = {key: value for key, value in payload.items() if key != "timestamp"}
-    canonical = json.dumps(stable_payload, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode()).hexdigest()

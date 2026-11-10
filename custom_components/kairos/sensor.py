@@ -246,15 +246,26 @@ class KairosApiResponseSensor(KairosSensor):
 
     @property
     def native_value(self) -> str:
+        if self.runtime.running:
+            return "Running"
         data = self.runtime.coordinator.data
-        if data.get("last_api_status") is not None:
-            return f"HTTP {data['last_api_status']}"
+        status = data.get("last_api_status")
+        if status is not None:
+            return "Rejected by API" if status < 500 else "API server error"
+        if data.get("last_error"):
+            if data.get("last_api_request") is None:
+                return "Input error"
+            if data.get("last_api_response") is None:
+                return "Unreachable"
+            return "Unexpected response"
         response = data.get("last_api_response")
         if isinstance(response, dict):
-            return f"API {response.get('status')}"
-        if data.get("last_error"):
-            return "Request error"
-        return "No response"
+            return {
+                "Optimal": "Optimized",
+                "Feasible": "Optimized",
+                "Infeasible": "Infeasible",
+            }.get(response.get("status"), "Unexpected response")
+        return "Not run yet"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

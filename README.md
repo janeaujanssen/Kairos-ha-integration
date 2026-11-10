@@ -20,6 +20,22 @@ Outputs:
 - Optimizer forecast sensors (diagnostic category, so they appear under the device's Diagnostic section): the forecast the optimizer used, with the time and value pairs in a `forecast` attribute. Grid: `Import Price Forecast`, `Export Price Forecast`. Solar: `Production Power Forecast`. Base Load: `Power Forecast`. Every storage asset: `Energy Demand Forecast`, `Passive Discharge Power Forecast`. Building Thermal Mass also: `COP Forecast`.
 - `Objective Cost` and `Last Optimization Attempt` diagnostic sensors, and a `Run optimization` button. The `Last Optimization Attempt` attributes include `thermal_history`: the hourly indoor/outdoor temperature and heat pump electric/thermal power used to derive the heat loss coefficient and COP, per Building Thermal Mass asset. Building Thermal Mass also has diagnostic sensors `Heat Loss Coefficient`, `Reference COP`, `Reference Outdoor Temperature` and `COP Outdoor Temperature Coefficient`, passed 1:1 from the API response.
 
+### Last Optimization Attempt states
+
+| State | Meaning |
+|---|---|
+| Running | An optimization is in progress. |
+| Optimized | The API returned a schedule (Optimal or Feasible). |
+| Infeasible | The optimizer found no valid schedule for the current inputs. |
+| Rejected by API | The API returned an HTTP 4xx error, usually a bad request. |
+| API server error | The API returned an HTTP 5xx error. |
+| Unreachable | The API could not be contacted, for example a connection failure or timeout. |
+| Unexpected response | The API replied, but the reply was not a valid schedule. |
+| Input error | The request could not be built from the configured inputs. |
+| Not run yet | No optimization has completed since startup. |
+
+The HTTP code and error text are in the `http_status` and `error` attributes.
+
 ## Building Thermal Mass history
 
 The reference COP and the COP outdoor temperature coefficient are derived from the last 14 days of recorder history of the indoor temperature, outdoor temperature, electric power and thermal power entities. The heat loss coefficient is derived from the same history unless a non-zero value is configured.

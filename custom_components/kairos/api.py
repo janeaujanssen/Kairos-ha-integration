@@ -49,7 +49,7 @@ class KairosApi:
                         response=body,
                     )
         except (ClientError, TimeoutError, ValueError) as err:
-            raise KairosApiError(f"Could not communicate with Kairos: {err}") from err
+            raise KairosApiError(f"Could not communicate with Kairos: {err!r}") from err
 
         if not isinstance(body, dict) or not isinstance(body.get("assets"), dict):
             raise KairosApiError(
