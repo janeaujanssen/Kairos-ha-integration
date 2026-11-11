@@ -8,7 +8,7 @@ from functools import partial
 import math
 from statistics import fmean
 
-from homeassistant.components.recorder import history
+from homeassistant.components.recorder import get_instance, history
 from homeassistant.core import HomeAssistant, State
 from homeassistant.util import dt as dt_util
 
@@ -39,7 +39,7 @@ async def async_forecast_base_load(
 ) -> list[float | None]:
     """Average matching weekday/time-slot readings from the previous four weeks."""
     now = dt_util.now()
-    states_by_entity = await hass.async_add_executor_job(
+    states_by_entity = await get_instance(hass).async_add_executor_job(
         partial(
             history.get_significant_states,
             hass,

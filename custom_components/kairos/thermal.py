@@ -9,7 +9,7 @@ from functools import partial
 from statistics import fmean
 from typing import Any
 
-from homeassistant.components.recorder import history
+from homeassistant.components.recorder import get_instance, history
 from homeassistant.core import HomeAssistant, State
 from homeassistant.util import dt as dt_util
 
@@ -157,7 +157,7 @@ async def async_derive_thermal_model(
         asset["thermal_power_entity"],
     ]
     now = dt_util.now()
-    states = await hass.async_add_executor_job(
+    states = await get_instance(hass).async_add_executor_job(
         partial(
             history.get_significant_states,
             hass,
