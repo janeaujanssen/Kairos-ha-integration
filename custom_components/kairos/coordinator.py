@@ -119,7 +119,9 @@ class KairosCoordinator:
         next_epoch = (
             (int(now.timestamp()) // interval_seconds + 1) * interval_seconds - lead
         )
-        delay = max(0, next_epoch - now.timestamp())
+        if next_epoch <= now.timestamp():
+            next_epoch += interval_seconds
+        delay = next_epoch - now.timestamp()
         self._cancel_tick = async_call_later(
             self.hass, delay, self._handle_schedule_tick
         )
