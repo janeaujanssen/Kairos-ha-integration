@@ -177,7 +177,9 @@ async def build_request(
     horizon_hours = config[CONF_HORIZON_HOURS]
     steps = round(horizon_hours * 60 / step_minutes)
     interval_seconds = step_minutes * 60
-    aligned_timestamp = int(dt_util.utcnow().timestamp()) // interval_seconds * interval_seconds
+    aligned_timestamp = (
+        int(dt_util.utcnow().timestamp()) // interval_seconds + 1
+    ) * interval_seconds
     request_start = dt_util.as_local(
         datetime.fromtimestamp(aligned_timestamp, tz=timezone.utc)
     )
@@ -188,7 +190,7 @@ async def build_request(
         )
 
     result: dict[str, Any] = {
-        "timestamp": request_start.isoformat(),
+        "planning_start": request_start.isoformat(),
         "time_step_duration": step_minutes / 60,
         "planning_horizon": horizon_hours,
         "solver_time_limit": config[CONF_TIME_LIMIT_S],

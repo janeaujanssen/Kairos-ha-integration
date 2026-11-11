@@ -114,8 +114,10 @@ class KairosCoordinator:
         """Schedule the next refresh just after an aligned optimization boundary."""
         interval_seconds = self.config[CONF_TIME_STEP_MINUTES] * 60
         now = dt_util.utcnow()
+        # shortcut: request timeout plus 10 s margin, capped below one step so ticks never fall before the previous boundary; upgrade if the margin proves too small in practice
+        lead = min(self.config[CONF_REQUEST_TIMEOUT] + 10, interval_seconds - 1)
         next_epoch = (
-            (int(now.timestamp()) // interval_seconds + 1) * interval_seconds + 1
+            (int(now.timestamp()) // interval_seconds + 1) * interval_seconds - lead
         )
         delay = max(0, next_epoch - now.timestamp())
         self._cancel_tick = async_call_later(
@@ -123,9 +125,9 @@ class KairosCoordinator:
         )
 
     def _claim_optimization_slot(self) -> bool:
-        """Return whether the current time slot starts an optimization run."""
+        """Return whether the coming time slot is due for an optimization run."""
         step_seconds = self.config[CONF_TIME_STEP_MINUTES] * 60
-        slot = int(dt_util.utcnow().timestamp()) // step_seconds
+        slot = int(dt_util.utcnow().timestamp()) // step_seconds + 1
         every = int(self.config[CONF_OPTIMIZATION_STEPS])
         due = self._force_update or (
             slot % every == 0 and slot != self._last_optimized_slot
@@ -191,7 +193,7 @@ class KairosCoordinator:
                 self._schedules = result["assets"]
                 self._forecasts = result.get("forecasts", {})
                 self._thermal_parameters = result.get("building_thermal_mass", {})
-                self._last_run = payload["timestamp"]
+                self._last_run = payload["planning_start"]
                 self._objective_cost = result.get("objective_cost")
                 self._failures = 0
                 await self._persist()
